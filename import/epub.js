@@ -208,33 +208,6 @@ function extractImagesFromManifest(manifest, zip, target) {
 	return extractFilesFromManifest(manifest, zip, target, ["image/jpeg", "image/png", "image/gif", "image/svg+xml"]);
 }
 
-// function buildImagesFromManifest(manifest, zip, target) {
-// 	var jpegs = manifest.filter(function (item) { item.type === "image/jpeg" ? true : false; });
-// 	var pngs = manifest.filter(function (item) { item.type === "image/png" ? true : false; });
-// 	var gifs = manifest.filter(function (item) { item.type === "image/gif" ? true : false; });
-// 	var svgs = manifest.filter(function (item) { item.type === "image/svg+xml" ? true : false; });
-// 	var images = jpgs.concat(pngs, gifs, svgs);
-// 	var filepaths = images.map(function (item) {
-// 		path.dirname(path.resolve("", target, item.href));
-// 	});
-// 	return Promise.all(filepaths.map(function (filepath) {
-// 		fs.ensureDirAsync(filepath);
-// 	})).then(function () {
-// 		fs.ensureDirAsync(target)
-// 	}).then(function () {
-// 		return Promise.all(
-// 			images.map(function (entry) {
-// 					zip.readFileAsyncAsync(entry.href).then(function (image) {
-// 						return fs.writeFileAsync(path.resolve(target, entry.href), image);
-// 					}).then(function () {
-// 						entry.target = target;
-// 						entry.absoluteOriginal = path.resolve("", entry.href);
-// 						return entry;
-// 					});
-// 			}));
-// 	});
-// }
-
 module.exports = {
 	getZip: getZip,
 	getOPF: getOPF,
