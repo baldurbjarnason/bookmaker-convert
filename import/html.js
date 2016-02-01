@@ -184,23 +184,28 @@ function epubtypeToRDFa($) {
 	});
 }
 
-function processLinksSync($) {
+function processLinksSync($, documentHref) {
 	$("a").each(function () {
 		var el = $(this);
-		var href = el.attr("href");
-		if (!href.startsWith("http") && !href.startsWith("mailto") && !href.startsWith("#")) {
-			var bfHref = new Buffer(href);
-			var codedHref = "#d" + bfHref.toString('hex');
+		var href = $(this).attr("href");
+		if (href.startsWith("#")) {
+			var bfHref = new Buffer(documentHref);
+			var codedHref = "#d" + bfHref.toString('hex') + "-" + href.slice(1);
 			el.attr("href", codedHref);
-		} else if (href.startsWith("#")) {
-			var split = href.split("#")
-			var bfHref = new Buffer(split[0]);
-			var codedHref = "#d" + bfHref.toString('hex') + "-" + split[1];
+		} else if (!href.protocol && !href.host && !href.path.startsWith("/")) {
+			var href = url.parse(el.attr("href"));
+			var bfHref = new Buffer(href.path);
+			if (href.hash) {
+				var hash = "-" + href.hash.slice(1);
+			}
+			var codedHref = "#d" + bfHref.toString('hex') + hash;
 			el.attr("href", codedHref);
 		}
 	});
 	return $;
 }
+
+// Remember to add the root id on each processed HTML file.
 
 function processIDsSync($, documentHref) {
 	$("[id]").each(function () {
