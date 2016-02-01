@@ -5,16 +5,7 @@ var fs = require("fs-extra");
 var path = require("path");
 var sanitizer = require('sanitizer');
 var url = require("url");
-
-function getZeroPaddedStringCounter() {
-	var counter = 0;
-	return function () {
-		counter = counter +1;
-
-		return ("000000" + counter).slice(-6);
-	}
-}
-
+var getZeroPaddedStringCounter = require("util").getZeroPaddedStringCounter;
 
 function shiftHeadings($) {
 	$("h4").each(function () {
