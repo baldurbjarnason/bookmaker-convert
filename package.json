@@ -14,14 +14,13 @@
   "author": "Baldur Bjarnason",
   "license": "MIT",
   "dependencies": {
-    "adm-zip": "^0.4.7",
     "bluebird": "^3.1.5",
     "cheerio": "^0.19.0",
     "easy-gd": "github:y-a-v-a/easy-gd",
     "fs-extra": "^0.26.5",
     "glob": "^6.0.4",
     "sanitizer": "^0.1.3",
-    "whatwg-fetch": "^0.11.0"
+    "zipfile": "^0.5.9"
   },
   "devDependencies": {
     "blue-tape": "^0.1.11"

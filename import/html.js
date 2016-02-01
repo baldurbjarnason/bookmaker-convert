@@ -65,15 +65,15 @@ function wrapAll($, selector, tag, include) {
 }
 
 
-// Needs to treat http/https images differently. Remote HTML needs a completely different function. Needs to find svg images as well
-function buildImagesFromHTML($, target, documentHref) {
+// Needs to treat http/https media differently. Remote HTML needs a completely different function.
+function buildManifestFromHTML($, target, documentHref) {
 	var counter = getZeroPaddedStringCounter();
-	var images = $("img").map(function () {
+	var manifest = $("[src]").map(function () {
 		var entry = {
-			href: $(this).attr("href"),
+			href: url.resolve(documentHref, $(this).attr("src")),
 			target: target,
-			newHref: counter() + path.basename($(this).attr("href")),
-			originalPath: url.resolve(documentHref, $(this).attr("href"))
+			newHref: counter() + path.basename($(this).attr("src")),
+			originalPath: url.resolve(documentHref, $(this).attr("src"))
 		};
 		if (path.extname(entry.href) === ".svg") {
 			entry.type = image/svg+xml;
@@ -81,37 +81,35 @@ function buildImagesFromHTML($, target, documentHref) {
 
 		return entry;
 	}).toArray();
-	var filepaths = images.map(function (item) {
-		path.dirname(path.resolve("", target, item.href));
-	});
 	return fs.ensureDirAsync(target).then(function() {
-		Promise.all(images.map(function (item) {
+		Promise.all(manifest.map(function (item) {
 			fs.copyAsync(path.resolve(item.href), path.resolve(target, item.newHref));
 		}));
 	}).then(function () {
-		return images;
+		return manifest;
 	})
 }
 
 // Needs functions for extracting scripts, styles, and iframed HTML.
 
 
-function processHTMLForImages($, images, documentHref, directory) {
+// This will only work for epub html files if 
+function processHTMLForMedia($, manifest, documentHref, directory) {
 	return new Promise(function (resolve, reject) {
 		var directory = directory || path.resolve("");
-		$("img").each(function () {
-			var originalPath = url.resolve(documentHref, $(this).attr("href"));
-			var image = images.filter(function (item) { item.originalPath === originalPath ? true : false; })[0];
-			var newHref = path.relative(directory, path.resolve(image.target, image.newHref));
-			$(this).attr("href", newHref);
+		$("[src]").each(function () {
+			var href = url.resolve(documentHref, $(this).attr("src"));
+			var file = manifest.filter(function (item) { item.href === href ? true : false; })[0];
+			var newHref = path.relative(directory, path.resolve(file.target, file.newHref));
+			$(this).attr("src", newHref);
 			if ($(this).attr("width")) {
-				image.width = $(this).attr("width");
+				file.width = $(this).attr("width");
 			}
 			if  ($(this).attr("height")) {
-				image.height = $(this).attr("height");
+				file.height = $(this).attr("height");
 			}
 		});
-		resolve($, images);
+		resolve($, manifest);
 	});
 }
 
@@ -245,8 +243,8 @@ module.exports = {
 	selectorToTag: selectorToTag,
 	wrapSync: wrapSync,
 	wrapAll: wrapAll,
-	buildImagesFromHTML: buildImagesFromHTML,
-	processHTMLForImages: processHTMLForImages,
+	buildManifestFromHTML: buildManifestFromHTML,
+	processHTMLForMedia: processHTMLForMedia,
 	buildMetaFromHTML: buildMetaFromHTML,
 	processHTMLFootnotes: processHTMLFootnotes,
 	processEPUBFootnotes: processEPUBFootnotes,

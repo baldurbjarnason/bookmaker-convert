@@ -10,5 +10,7 @@
 * QUESTION: make the exported HTML completely standalone using data uris and inline js/css?
 * Add support for automatically converting single stylesheet epubs into a document with a theme.
 * BlobStoreFunction for customisable file saves.
-* Switch to yauzl, requires changes in HTML parsing as well.
 * Handle remote assets and remote files.
+* Allow for custom CSS, JS, and HTML processing functions.
+* Figure out something about MathML
+* CSS link reconstruction will be done at the document construction stage.

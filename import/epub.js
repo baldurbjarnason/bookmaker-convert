@@ -1,33 +1,36 @@
 "use strict";
 
-var AdmZip = require("adm-zip");
 var cheerio = require("cheerio");
 var Promise = require("bluebird");
 var fs = require("fs-extra");
 var path = require("path");
+var getZeroPaddedStringCounter = require("util").getZeroPaddedStringCounter;
+var zipfile = require("zipfile");
 
 
 function getZip(filename) {
 	return new Promise(function (resolve, reject) {
-			var zip = new AdmZip(filename);
-			Promise.promisifyAll(zip);
+			var zip = Promise.promisifyAll(new zipfile.ZipFile(filename));
 			resolve(zip);
 	});
 }
 
 function getOPF(zip) {
-	return new Promise(function (resolve, reject) {
-		var container = cheerio.load(zip.readAsText('META-INF/container.xml'), {
+	var OPFpath;
+	return zip.readFileAsync('META-INF/container.xml').then(function (file) {
+		var container = cheerio.load(file.toString(), {
     		normalizeWhitespace: true,
     		xmlMode: true
 		});
-		var OPFpath = container("rootfile").attr('full-path');
-		var OPF = cheerio.load(zip.readAsText(OPFpath), {
+		OPFpath = container("rootfile").attr('full-path');
+		return zip.readFileAsync(OPFpath);
+	}).then(function (OPFFile) {
+		var OPF = cheerio.load(OPFFile, {
     		normalizeWhitespace: true,
     		xmlMode: true
 		});
 		OPF.root().attr("data-full-path", OPFpath);
-		resolve(OPF);
+		return OPF;
 	});
 }
 
@@ -92,9 +95,10 @@ function buildManifest(OPF) {
 		var baseDir = path.dirname(OPF.attr("data-full-path"));
 		var items = OPF("manifest > item").map(function () {
 			var el = OPF(this);
-			var href = path.relative("", path.resolve(baseDir, el.attr("href")));
+			var zipPath = url.resolve(baseDir, el.attr("href"));
 			return {
-				href: href,
+				href: el.attr("href"),
+				zipPath: zipPath,
 				id: el.attr("id"),
 				type: el.attr("media-type"),
 				properties: el.attr("properties").split(" ")
@@ -102,6 +106,32 @@ function buildManifest(OPF) {
 		}).get();
 		resolve(items);
 	});
+}
+
+function extractFiles(manifest, zip, target) {
+	var counter = getZeroPaddedStringCounter();
+	return Promise.all(manifest.map(function (item) {
+		if (item.type === "application/xhtml+xml" || item.type === "text/css") {
+			return Promise.props({
+				contents: zip.readFileAsync(item.zipPath),
+				href: item.href,
+				properties: item.properties,
+				id: item.id,
+				type: item.type
+			});			
+		} else {
+			var newHref = counter() + path.basename(item.href);
+			return Promise.props({
+				newHref: newHref,
+				contents: zip.copyFileAsync(item.zipPath, path.resolve(target, newHref)),
+				href: item.href,
+				properties: item.properties,
+				id: item.id,
+				type: item.type
+			});				
+		}
+
+	}));
 }
 
 function buildSpine(OPF) {
@@ -122,48 +152,33 @@ function buildSpine(OPF) {
 				return true;
 			}
 		});
-		return items;
+		resolve(items);
 	});	
 }
 
 
-function extractItemsFromManifest(manifest, zip, type) {
+function extractItemsFromManifest(manifest, type) {
 	var items = manifest.filter(function (item) { item.type === type ? true : false; });
-	return Promise.all(chapters.map(function (item) {
-		return Promise.props({
-			chapter: zip.readAsTextAsyncAsync(item.href),
-			href: item.href,
-			properties: item.properties,
-			id: item.id,
-			type: item.type
-		});
-	}));
 }
 
-function extractStylesFromManifest(manifest, zip) {
-	return extractItemsFromManifest(manifest, zip, "text/css");
+function styles(manifest) {
+	return extractItemsFromManifest(manifest, "text/css");
 }
 
-function extractScriptsFromManifest(manifest, zip) {
-	return extractItemsFromManifest(manifest, zip, "application/javascript");
+function scripts(manifest) {
+	return extractItemsFromManifest(manifest, "application/javascript");
 }
 
 
-function extractChaptersFromManifest(manifest, zip) {
-	var chapters = manifest.filter(function (item) { item.type === "application/xhtml+xml" ? true : false; })
-		.filter(function (item) { item.properties.includes("nav") ? false : true; });
-	return Promise.all(chapters.map(function (item) {
-		return Promise.props({
-			chapter: zip.readAsTextAsyncAsync(item.href),
-			href: item.href,
-			properties: item.properties,
-			id: item.id,
-			type: item.type
-		});
-	}));
+function chapters(manifest, spine) {
+	var chapters = spine.map(function (item) {
+		var chapter = manifest.filter(function (file) { file.id === item.idref ? true : false; })[0];
+		chapter.linear = item.linear;
+		return chapter;
+	});
 }
 
-function extractFilesFromManifest(manifest, zip, target, type) {
+function extractFilesFromManifest(manifest, target, type) {
 	if (Array.isArray(type)) {
 		var files = [].concat(type.map(function (filter) {
 			manifest.filter(function (item) { item.type === filter ? true : false; });
@@ -171,41 +186,23 @@ function extractFilesFromManifest(manifest, zip, target, type) {
 	} else {
 		var files = manifest.filter(function (item) { item.type === type ? true : false; });
 	}
-	var filepaths = files.map(function (item) {
-		path.dirname(path.resolve("", target, item.href));
-	});
-	return Promise.all(filepaths.map(function (filepath) {
-		fs.ensureDirAsync(filepath);
-	})).then(function () {
-		fs.ensureDirAsync(target)
-	}).then(function () {
-		return Promise.all(
-			files.map(function (entry) {
-					zip.readFileAsyncAsync(entry.href).then(function (file) {
-						return fs.writeFileAsync(path.resolve(target, entry.href), file);
-					}).then(function () {
-						entry.target = target;
-						entry.absoluteOriginal = path.resolve("", entry.href);
-						return entry;
-					});
-			}));
-	});
+	return files;
 }
 
-function extractMP3FromManifest(manifest, zip, target) {
-	return extractFilesFromManifest(manifest, zip, target, "audio/mpeg");
+function MP3s(manifest, target) {
+	return extractFilesFromManifest(manifest, target, "audio/mpeg");
 }
 
-function extractMP4AudioFromManifest(manifest, zip, target) {
-	return extractFilesFromManifest(manifest, zip, target, "audio/mp4");
+function MP4Audio(manifest, target) {
+	return extractFilesFromManifest(manifest, target, "audio/mp4");
 }
 
-function extractMP4VideoFromManifest(manifest, zip, target) {
-	return extractFilesFromManifest(manifest, zip, target, "video/mp4");
+function MP4Video(manifest, target) {
+	return extractFilesFromManifest(manifest, target, "video/mp4");
 }
 
-function extractImagesFromManifest(manifest, zip, target) {
-	return extractFilesFromManifest(manifest, zip, target, ["image/jpeg", "image/png", "image/gif", "image/svg+xml"]);
+function images(manifest, target) {
+	return extractFilesFromManifest(manifest, target, ["image/jpeg", "image/png", "image/gif", "image/svg+xml"]);
 }
 
 module.exports = {
@@ -213,13 +210,14 @@ module.exports = {
 	getOPF: getOPF,
 	buildMetaFromOPF: buildMetaFromOPF,
 	buildManifest: buildManifest,
+	extractFiles: extractFiles,
 	buildSpine: buildSpine,
-	extractImagesFromManifest: extractImagesFromManifest,
-	extractMP4VideoFromManifest: extractMP4VideoFromManifest,
-	extractMP4AudioFromManifest: extractMP4AudioFromManifest,
-	extractMP3FromManifest: extractMP3FromManifest,
-	extractChaptersFromManifest: extractChaptersFromManifest,
-	extractScriptsFromManifest: extractScriptsFromManifest,
-	extractStylesFromManifest: extractStylesFromManifest
+	images: images,
+	MP4Video: MP4Video,
+	MP4Audio: MP4Audio,
+	MP3s: MP3s,
+	chapters: chapters,
+	scripts: scripts,
+	styles: styles
 }
 
