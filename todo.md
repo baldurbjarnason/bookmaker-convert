@@ -9,3 +9,4 @@
 * BROWSER: Use rollup, browserify, and uglify to generate four files: es6 module, cjs module, standalone, standalone minified.
 * QUESTION: make the exported HTML completely standalone using data uris and inline js/css?
 * Add support for automatically converting single stylesheet epubs into a document with a theme.
+* BlobStoreFunction for customisable file saves.
