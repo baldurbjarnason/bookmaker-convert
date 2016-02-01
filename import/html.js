@@ -4,6 +4,16 @@ var Promise = require("bluebird");
 var fs = require("fs-extra");
 var path = require("path");
 var sanitizer = require('sanitizer');
+var url = require("url");
+
+function getZeroPaddedStringCounter() {
+	var counter = 0;
+	return function () {
+		counter = counter +1;
+
+		return ("000000" + counter).slice(-6);
+	}
+}
 
 
 function shiftHeadings($) {
@@ -65,24 +75,27 @@ function wrapAll($, selector, tag, include) {
 
 
 // Needs to treat http/https images differently. Remote HTML needs a completely different function. Needs to find svg images as well
-function buildImagesFromHTML($, target) {
+function buildImagesFromHTML($, target, documentHref) {
+	var counter = getZeroPaddedStringCounter();
 	var images = $("img").map(function () {
 		var entry = {
 			href: $(this).attr("href"),
 			target: target,
-			absoluteOriginal: path.resolve("", $(this).attr("href"))
+			newHref: counter() + path.basename($(this).attr("href")),
+			originalPath: url.resolve(documentHref, $(this).attr("href"))
 		};
-	});
+		if (path.extname(entry.href) === ".svg") {
+			entry.type = image/svg+xml;
+		}
+
+		return entry;
+	}).toArray();
 	var filepaths = images.map(function (item) {
 		path.dirname(path.resolve("", target, item.href));
 	});
-	return Promise.all(filepaths.map(function (filepath) {
-		fs.ensureDirAsync(filepath);
-	})).then(function () {
-		fs.ensureDirAsync(target)
-	}).then(function() {
+	return fs.ensureDirAsync(target).then(function() {
 		Promise.all(images.map(function (item) {
-			fs.copyAsync(path.resolve("", item.href), path.resolve("", target, item.href));
+			fs.copyAsync(path.resolve(item.href), path.resolve(target, item.newHref));
 		}));
 	}).then(function () {
 		return images;
@@ -92,13 +105,13 @@ function buildImagesFromHTML($, target) {
 // Needs functions for extracting scripts, styles, and iframed HTML.
 
 
-function processHTMLForImages($, images, documentHref) {
+function processHTMLForImages($, images, documentHref, directory) {
 	return new Promise(function (resolve, reject) {
-		var directory = path.dirname(path.resolve("", documentHref));
+		var directory = directory || path.resolve("");
 		$("img").each(function () {
-			var absImg = path.resolve(directory, $(this).attr("href"));
-			var image = images.filter(function (item) { item.absoluteOriginal === absImg ? true : false; })[0];
-			var newHref = path.relative(directory, path.resolve(image.target, image.href));
+			var originalPath = url.resolve(documentHref, $(this).attr("href"));
+			var image = images.filter(function (item) { item.originalPath === originalPath ? true : false; })[0];
+			var newHref = path.relative(directory, path.resolve(image.target, image.newHref));
 			$(this).attr("href", newHref);
 			if ($(this).attr("width")) {
 				image.width = $(this).attr("width");
