@@ -108,7 +108,7 @@ function extractFiles (manifest, zip, target, exclude) {
     fs.ensureDirAsync(target);
   }).then(function () {
     return Promise.all(manifest.map(function (item) {
-      if (item.type === "application/xhtml+xml" || item.type === "text/css") {
+      if (item.type === "application/xhtml+xml" || item.type === "text/css" || item.type === "application/x-dtbncx+xml") {
         return Promise.props({
           contents: zip.readFileAsync(item.zipPath).then(function (buf) { return buf.toString(); }),
           href: item.href,
