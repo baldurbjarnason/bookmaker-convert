@@ -4,7 +4,6 @@ var cheerio = require("cheerio");
 var Promise = require("bluebird");
 var fs = require("fs-extra");
 var path = require("path");
-var getZeroPaddedStringCounter = require("util").getZeroPaddedStringCounter;
 var zipfile = require("zipfile");
 
 
@@ -34,15 +33,6 @@ function getOPF(zip) {
 	});
 }
 
-
-function refineMetaSync(OPF, metaEntry) {
-	var refines = OPF("[refines='" + metaEntry.id + "'']");
-	refines.each(function () {
-		metaEntry[OPF(this).attr("property")] = OPF(this).text();
-	});
-	return metaEntry;
-}
-
 function getMeta(OPF, metatag) {
 	return new Promise(function (resolve, reject) {
 		var metaArray = OPF(metatag).map(function () {
@@ -53,9 +43,9 @@ function getMeta(OPF, metatag) {
 				type: metatag,
 				id: el.attr("id"),
 				lang: el.attr("xml:lang"),
-				dir: el.attr("dir")
+				dir: el.attr("dir"),
+				fileAs: el.attr("file-as")
 			};
-			var mapEntry = refineMeta(OPF, metaEntry);
 
 		}).get();
 		resolve(metaArray);
@@ -77,15 +67,9 @@ function buildMetaFromOPF(OPF) {
 			identifiers: getMeta(OPF, "dc\\:identifier"),
 			epubVersion: OPF("package").attr("version"),
 			creators: getMeta(OPF, "dc\\:creator"),
-			contributor: getMeta(OPF, "dc\\:contributor"),
 			titles: getMeta(OPF, "dc\\:title"),
 			languages: getMeta(OPF, "dc\\:language"),
-			sources: getMeta(OPF, "dc\\:source"),
-			subjects: getMeta(OPF, "dc\\:subject"),
-			description: OPF("dc\\:description").text(),
 			version:  OPF("ibooks\\:version").text(),
-			dcDate: OPF("dc\\:date").text(),
-			rights: OPF("dc\\:rights").text(),
 			publisher: OPF("dc\\:publisher").text()
 	});
 }
@@ -108,31 +92,40 @@ function buildManifest(OPF) {
 	});
 }
 
-function extractFiles(manifest, zip, target) {
-	var counter = getZeroPaddedStringCounter();
-	return Promise.all(manifest.map(function (item) {
-		if (item.type === "application/xhtml+xml" || item.type === "text/css") {
-			return Promise.props({
-				contents: zip.readFileAsync(item.zipPath),
-				href: item.href,
-				properties: item.properties,
-				id: item.id,
-				type: item.type
-			});			
-		} else {
-			var newHref = counter() + path.basename(item.href);
-			return Promise.props({
-				newHref: newHref,
-				contents: zip.copyFileAsync(item.zipPath, path.resolve(target, newHref)),
-				href: item.href,
-				properties: item.properties,
-				id: item.id,
-				type: item.type
-			});				
-		}
-
-	}));
+function extractFiles(manifest, zip, target, exclude) {
+	var filepaths = manifest.map(function (item) {
+		path.dirname(path.resolve(target, item.href));
+	});
+	exclude.forEach(function (type) {
+		filepaths = filepaths.filter(function (item) { item.type !== type ? true : false; });
+	});
+	return Promise.all(filepaths.map(function (filepath) {
+		fs.ensureDirAsync(filepath);
+	})).then(function () {
+		fs.ensureDirAsync(target)
+	}).then(function () {
+		Promise.all(manifest.map(function (item) {
+			if (item.type === "application/xhtml+xml" || item.type === "text/css") {
+				return Promise.props({
+					contents: zip.readFileAsync(item.zipPath),
+					href: item.href,
+					properties: item.properties,
+					id: item.id,
+					type: item.type
+				});			
+			} else {
+				return Promise.props({
+					contents: zip.copyFileAsync(item.zipPath, path.resolve(target, item.href)),
+					href: item.href,
+					properties: item.properties,
+					id: item.id,
+					type: item.type
+				});				
+			}
+		}));
+	});
 }
+
 
 function buildSpine(OPF) {
 	return new Promise(function (resolve, reject) {
