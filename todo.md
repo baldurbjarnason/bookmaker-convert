@@ -15,3 +15,5 @@
 * Figure out something about MathML
 * CSS link reconstruction will be done at the document construction stage.
 * Build basic EPUB 3.1 support. And EPUB2.
+* Consider using a writer object to abstract file save locations and methods.
+* Reorg files: epub (controls zip access), opf (controls epub metadata), html (just html processing), media (image processing, manifest cleanup), document (document construction).
