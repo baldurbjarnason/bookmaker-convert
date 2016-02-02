@@ -5,7 +5,6 @@ var fs = require("fs-extra");
 var path = require("path");
 var sanitizer = require('sanitizer');
 var url = require("url");
-var getZeroPaddedStringCounter = require("util").getZeroPaddedStringCounter;
 
 function shiftHeadingsSync($) {
 	$("h4").each(function () {
@@ -76,60 +75,9 @@ function fixHeadings($, fixAll) {
 	});
 }
 
-
-// Needs to treat http/https media differently. Remote HTML needs a completely different function.
-function buildManifestFromHTML($, target, documentHref) {
-	var counter = getZeroPaddedStringCounter();
-	var manifest = $("[src]").map(function () {
-		var entry = {
-			href: url.resolve(documentHref, $(this).attr("src")),
-			target: target,
-			newHref: counter() + path.basename($(this).attr("src")),
-			originalPath: url.resolve(documentHref, $(this).attr("src"))
-		};
-		if (path.extname(entry.href) === ".svg") {
-			entry.type = image/svg+xml;
-		}
-
-		return entry;
-	}).toArray();
-	return fs.ensureDirAsync(target).then(function() {
-		Promise.all(manifest.map(function (item) {
-			fs.copyAsync(path.resolve(item.href), path.resolve(target, item.newHref));
-		}));
-	}).then(function () {
-		return manifest;
-	})
-}
-
-// Needs functions for extracting scripts, styles, and iframed HTML.
-
-function processSrcset(srcset, manifest, documentHref, directory) {
-	var parsedSet = srcset.split(/,\W*/g).map(function (item) {
-		item.split(/\W+/g)
-	})
-	var stringSet = parsedSet.map(function (item) {
-		var href = url.resolve(documentHref, item[0]);
-		var file = manifest.filter(function (item) { item.href === href ? true : false; })[0];
-		var newHref = path.relative(directory, path.resolve(file.target, file.newHref));
-		item[0] = newHref;
-		return item.join(" ");
-	});
-	return stringSet.join(", ");
-}
-
-function processHTMLForMedia($, manifest, documentHref, directory) {
+function processHTMLForMedia($, manifest) {
 	return new Promise(function (resolve, reject) {
-		var directory = directory || path.resolve("");
-		$("[src]").each(function () {
-			var href = url.resolve(documentHref, $(this).attr("src"));
-			var file = manifest.filter(function (item) { item.href === href ? true : false; })[0];
-			var newHref = path.relative(directory, path.resolve(file.target, file.newHref));
-			$(this).attr("src", newHref);
-			if ($(this).attr("srcset")) {
-				var newSet = processSrcset($(this).attr("srcset"), manifest, documentHref, directory);
-				$(this).attr("srcset", newSet);
-			}
+		$("img").each(function () {
 			if ($(this).attr("width")) {
 				file.width = $(this).attr("width");
 			}
@@ -189,12 +137,12 @@ function processEPUBFootnotes($) {
 	});
 }
 
-function epubtypeToRDFa($) {
+function epubtypeToRole($) {
 	return new Promise(function (resolve, reject) {
 		$("[epub\\:type]").each(function () {
 			var type = $(this).attr("epub:type");
-			$(this).attr("vocab", "http://www.idpf.org/epub/vocab/structure/#");
-			$(this).attr("typeof", type);
+			var roles = $(this).attr("role") ? $(this).attr("role") + " " + type : type;
+			$(this).attr("role", roles);
 			$(this).removeAttr("epub:type");
 		})
 		resolve($);
@@ -271,12 +219,11 @@ module.exports = {
 	selectorToTag: selectorToTag,
 	wrapSync: wrapSync,
 	wrapAll: wrapAll,
-	buildManifestFromHTML: buildManifestFromHTML,
 	processHTMLForMedia: processHTMLForMedia,
 	buildMetaFromHTML: buildMetaFromHTML,
 	processHTMLFootnotes: processHTMLFootnotes,
 	processEPUBFootnotes: processEPUBFootnotes,
-	epubtypeToRDFa: epubtypeToRDFa,
+	epubtypeToRole: epubtypeToRole,
 	processIDsSync: processIDsSync,
 	processLinksSync: processLinksSync,
 	stripStyles: stripStyles,
