@@ -7,7 +7,7 @@ var sanitizer = require('sanitizer');
 var url = require("url");
 var getZeroPaddedStringCounter = require("util").getZeroPaddedStringCounter;
 
-function shiftHeadings($) {
+function shiftHeadingsSync($) {
 	$("h4").each(function () {
 		this.tagName = "h5";
 	});
@@ -20,7 +20,6 @@ function shiftHeadings($) {
 	$("h1").each(function () {
 		this.tagName = "h2";
 	});
-	return Promise.resolved($);
 }
 
 function selectorToTag($, selector, tag) {
@@ -64,6 +63,19 @@ function wrapAll($, selector, tag, include) {
 	});
 }
 
+function fixHeadings($, fixAll) {
+	return new Promise(function (resolve, reject) {
+			var h1s = $("h1:not(h1+h1)");
+			var h2s = $("h2:not(h2+h2)");
+			var h1 = h1s.first();
+			shiftHeadingsSync($);
+			if (!fixAll) {
+				h1.get(0).tagName = "h1";
+			}
+			resolve($);
+	});
+}
+
 
 // Needs to treat http/https media differently. Remote HTML needs a completely different function.
 function buildManifestFromHTML($, target, documentHref) {
@@ -93,7 +105,7 @@ function buildManifestFromHTML($, target, documentHref) {
 // Needs functions for extracting scripts, styles, and iframed HTML.
 
 
-// This will only work for epub html files if 
+// This does not work with srcset
 function processHTMLForMedia($, manifest, documentHref, directory) {
 	return new Promise(function (resolve, reject) {
 		var directory = directory || path.resolve("");

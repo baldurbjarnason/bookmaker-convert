@@ -14,3 +14,4 @@
 * Allow for custom CSS, JS, and HTML processing functions.
 * Figure out something about MathML
 * CSS link reconstruction will be done at the document construction stage.
+* Build basic EPUB 3.1 support. And EPUB2.
