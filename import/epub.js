@@ -2,7 +2,7 @@
 
 var cheerio = require("cheerio");
 var Promise = require("bluebird");
-var fs = require("fs-extra");
+var fs = Promise.promisifyAll(require("fs-extra"));
 var path = require("path");
 var zipfile = require("zipfile");
 var url = require("url");
@@ -28,7 +28,7 @@ function getOPF (zip) {
       normalizeWhitespace: true,
       xmlMode: true
     });
-    OPF.root().attr("data-full-path", OPFpath);
+    OPF("package").attr("data-full-path", OPFpath);
     return OPF;
   });
 }
@@ -67,23 +67,26 @@ function buildMetaFromOPF (OPF) {
     creators: getMeta(OPF, "dc\\:creator"),
     titles: getMeta(OPF, "dc\\:title"),
     languages: getMeta(OPF, "dc\\:language"),
-    version: OPF("ibooks\\:version").text(),
+    version: OPF("meta[property='ibooks\\:version']").text(),
     publisher: OPF("dc\\:publisher").text()
   });
 }
 
 function buildManifest (OPF) {
   return new Promise(function (resolve, reject) {
-    var baseDir = path.dirname(OPF.attr("data-full-path"));
+    var base = OPF("package").attr("data-full-path");
     var items = OPF("manifest > item").map(function () {
       var el = OPF(this);
-      var zipPath = url.resolve(baseDir, el.attr("href"));
+      var zipPath = url.resolve(base, el.attr("href"));
+      if (el.attr("properties")) {
+        var properties = el.attr("properties").split(/\W+/g);
+      }
       return {
         href: el.attr("href"),
         zipPath: zipPath,
         id: el.attr("id"),
         type: el.attr("media-type"),
-        properties: el.attr("properties").split(" ")
+        properties: properties
       };
     }).get();
     resolve(items);
@@ -92,20 +95,22 @@ function buildManifest (OPF) {
 
 function extractFiles (manifest, zip, target, exclude) {
   var filepaths = manifest.map(function (item) {
-    path.dirname(path.resolve(target, item.href));
+    return path.dirname(path.resolve(target, item.href));
   });
-  exclude.forEach(function (type) {
-    filepaths = filepaths.filter(function (item) { item.type !== type; });
-  });
+  if (exclude) {
+    exclude.forEach(function (type) {
+      filepaths = filepaths.filter(function (item) { return item.type !== type; });
+    });
+  }
   return Promise.all(filepaths.map(function (filepath) {
     fs.ensureDirAsync(filepath);
   })).then(function () {
     fs.ensureDirAsync(target);
   }).then(function () {
-    Promise.all(manifest.map(function (item) {
+    return Promise.all(manifest.map(function (item) {
       if (item.type === "application/xhtml+xml" || item.type === "text/css") {
         return Promise.props({
-          contents: zip.readFileAsync(item.zipPath),
+          contents: zip.readFileAsync(item.zipPath).then(function (buf) { return buf.toString(); }),
           href: item.href,
           properties: item.properties,
           id: item.id,
@@ -121,6 +126,8 @@ function extractFiles (manifest, zip, target, exclude) {
         });
       }
     }));
+  }).then(function (manifestWithContent) {
+    return manifestWithContent;
   });
 }
 
@@ -147,7 +154,7 @@ function buildSpine (OPF) {
 }
 
 function extractItemsFromManifest (manifest, type) {
-  return manifest.filter(function (item) { item.type === type; });
+  return manifest.filter(function (item) { return item.type === type; });
 }
 
 function styles (manifest) {
@@ -160,7 +167,7 @@ function scripts (manifest) {
 
 function chapters (manifest, spine) {
   return spine.map(function (item) {
-    var chapter = manifest.filter(function (file) { file.id === item.idref; })[0];
+    var chapter = manifest.filter(function (file) { return file.id === item.idref; })[0];
     chapter.linear = item.linear;
     return chapter;
   });
@@ -170,10 +177,10 @@ function extractFilesFromManifest (manifest, target, type) {
   var files = [];
   if (Array.isArray(type)) {
     files = files.concat(type.map(function (filter) {
-      manifest.filter(function (item) { item.type === filter; });
+      manifest.filter(function (item) { return item.type === filter; });
     }));
   } else {
-    files = manifest.filter(function (item) { item.type === type; });
+    files = manifest.filter(function (item) { return item.type === type; });
   }
   return files;
 }

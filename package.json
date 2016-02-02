@@ -23,6 +23,6 @@
     "zipfile": "^0.5.9"
   },
   "devDependencies": {
-    "blue-tape": "^0.1.11"
+    "tape": "^4.4.0"
   }
 }

@@ -6,7 +6,7 @@ var path = require("path");
 
 function resizeImagesToMatch (images) {
   images = images.filter(function (item) {
-    item.type !== "image/svg+xml";
+    return item.type !== "image/svg+xml";
   });
   return Promise.all(images.map(function (img) {
     var sizes = {};

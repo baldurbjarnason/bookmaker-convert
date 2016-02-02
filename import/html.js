@@ -77,7 +77,7 @@ function processHTMLForMedia ($, manifest, documentHref) {
   return new Promise(function (resolve, reject) {
     $("img").map(function () {
       var href = url.resolve(documentHref, $(this).attr("src"));
-      var file = manifest.filter(function (item) { item.href === href; })[0];
+      var file = manifest.filter(function (item) { return item.href === href; })[0];
       if ($(this).attr("width")) {
         file.width = $(this).attr("width");
       }
