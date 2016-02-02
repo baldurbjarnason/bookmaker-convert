@@ -104,8 +104,20 @@ function buildManifestFromHTML($, target, documentHref) {
 
 // Needs functions for extracting scripts, styles, and iframed HTML.
 
+function processSrcset(srcset, manifest, documentHref, directory) {
+	var parsedSet = srcset.split(/,\W*/g).map(function (item) {
+		item.split(/\W+/g)
+	})
+	var stringSet = parsedSet.map(function (item) {
+		var href = url.resolve(documentHref, item[0]);
+		var file = manifest.filter(function (item) { item.href === href ? true : false; })[0];
+		var newHref = path.relative(directory, path.resolve(file.target, file.newHref));
+		item[0] = newHref;
+		return item.join(" ");
+	});
+	return stringSet.join(", ");
+}
 
-// This does not work with srcset
 function processHTMLForMedia($, manifest, documentHref, directory) {
 	return new Promise(function (resolve, reject) {
 		var directory = directory || path.resolve("");
@@ -114,6 +126,10 @@ function processHTMLForMedia($, manifest, documentHref, directory) {
 			var file = manifest.filter(function (item) { item.href === href ? true : false; })[0];
 			var newHref = path.relative(directory, path.resolve(file.target, file.newHref));
 			$(this).attr("src", newHref);
+			if ($(this).attr("srcset")) {
+				var newSet = processSrcset($(this).attr("srcset"), manifest, documentHref, directory);
+				$(this).attr("srcset", newSet);
+			}
 			if ($(this).attr("width")) {
 				file.width = $(this).attr("width");
 			}
