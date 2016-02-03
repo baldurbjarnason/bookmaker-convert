@@ -5,7 +5,7 @@ var epub = require("../import/epub.js");
 var path = require("path");
 
 tape.test("Getting zip", function (t) {
-  t.plan(18);
+  t.plan(20);
   var epubResult = {};
   epub.getZip(path.resolve(__dirname, "assets/test.zip")).then(function (zip) {
     epubResult.zip = zip;
@@ -17,6 +17,7 @@ tape.test("Getting zip", function (t) {
     t.ok(OPF.root(), "OPF object has cheerio functions");
     return epub.buildMetaFromOPF(OPF);
   }).then(function (meta) {
+    epubResult.meta = meta;
     t.ok(meta.identifier, "Meta should have identifier");
     t.ok(meta.creators, "Meta should have creators");
     t.ok(meta.titles, "Meta should have titles");
@@ -43,5 +44,10 @@ tape.test("Getting zip", function (t) {
     var styles = epub.styles(epubResult.manifest);
     t.ok(styles, "Should have styles");
     t.ok(styles[0].contents, "Styles should have contents");
+    var cover = epub.findCover(epubResult.manifest, epubResult.meta);
+    t.ok(cover, "EPUB should have cover");
+    cover.properties = [];
+    var cover2 = epub.findCover(epubResult.manifest, epubResult.meta);
+    t.ok(cover2, "EPUB should have cover, even if they aren't using the recommended EPUB3 method");
   });
 });

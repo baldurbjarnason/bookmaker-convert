@@ -9,7 +9,7 @@
 * BROWSER: Use rollup, browserify, and uglify to generate four files: es6 module, cjs module, standalone, standalone minified.
 * QUESTION: make the exported HTML completely standalone using data uris and inline js/css?
 * Add support for automatically converting single stylesheet epubs into a document with a theme.
-* BlobStoreFunction for customisable file saves.
+* BlobStoreFunction for customisable file saves. Or just a writer object that handles tmp files, blob storage, and more.
 * Handle remote assets and remote files.
 * Allow for custom CSS, JS, and HTML processing functions.
 * Figure out something about MathML
@@ -17,3 +17,8 @@
 * Build basic EPUB 3.1 support. And EPUB2. This means adding support for HTML chapters.
 * Consider using a writer object to abstract file save locations and methods.
 * Add NCX and Nav HTML parsing functions.
+* Optionally strip iframes.
+* Add landmark parsing.
+* Chapter wrapping: preamble (up to first h1), pre-matter (from first h1 to first h2), chapters (each h2 to the next one), post-matter (from last h2 to end).
+* Need a solid story for handling style tags.
+* Remote resources.

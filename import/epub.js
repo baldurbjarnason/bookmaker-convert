@@ -68,7 +68,8 @@ function buildMetaFromOPF (OPF) {
     titles: getMeta(OPF, "dc\\:title"),
     languages: getMeta(OPF, "dc\\:language"),
     version: OPF("meta[property='ibooks\\:version']").text(),
-    publisher: OPF("dc\\:publisher").text()
+    publisher: OPF("dc\\:publisher").text(),
+    coverId: OPF("meta[name='cover']").attr("content")
   });
 }
 
@@ -79,14 +80,14 @@ function buildManifest (OPF) {
       var el = OPF(this);
       var zipPath = url.resolve(base, el.attr("href"));
       if (el.attr("properties")) {
-        var properties = el.attr("properties").split(/\W+/g);
+        var properties = el.attr("properties").split(/\s+/g);
       }
       return {
         href: el.attr("href"),
         zipPath: zipPath,
         id: el.attr("id"),
         type: el.attr("media-type"),
-        properties: properties
+        properties: properties || []
       };
     }).get();
     resolve(items);
@@ -112,7 +113,7 @@ function extractFiles (manifest, zip, target, exclude) {
         return Promise.props({
           contents: zip.readFileAsync(item.zipPath).then(function (buf) { return buf.toString(); }),
           href: item.href,
-          properties: item.properties,
+          properties: item.properties || [],
           id: item.id,
           type: item.type
         });
@@ -120,7 +121,7 @@ function extractFiles (manifest, zip, target, exclude) {
         return Promise.props({
           contents: zip.copyFileAsync(item.zipPath, path.resolve(target, item.href)),
           href: item.href,
-          properties: item.properties,
+          properties: item.properties || [],
           id: item.id,
           type: item.type
         });
@@ -173,7 +174,7 @@ function chapters (manifest, spine) {
   });
 }
 
-function extractFilesFromManifest (manifest, target, type) {
+function extractFilesFromManifest (manifest, type) {
   var files = [];
   if (Array.isArray(type)) {
     files = files.concat(type.map(function (filter) {
@@ -185,20 +186,28 @@ function extractFilesFromManifest (manifest, target, type) {
   return files;
 }
 
-function MP3s (manifest, target) {
-  return extractFilesFromManifest(manifest, target, "audio/mpeg");
+function MP3s (manifest) {
+  return extractFilesFromManifest(manifest, "audio/mpeg");
 }
 
-function MP4Audio (manifest, target) {
-  return extractFilesFromManifest(manifest, target, "audio/mp4");
+function MP4Audio (manifest) {
+  return extractFilesFromManifest(manifest, "audio/mp4");
 }
 
-function MP4Video (manifest, target) {
-  return extractFilesFromManifest(manifest, target, "video/mp4");
+function MP4Video (manifest) {
+  return extractFilesFromManifest(manifest, "video/mp4");
 }
 
-function images (manifest, target) {
-  return extractFilesFromManifest(manifest, target, ["image/jpeg", "image/png", "image/gif", "image/svg+xml"]);
+function images (manifest) {
+  return extractFilesFromManifest(manifest, ["image/jpeg", "image/png", "image/gif", "image/svg+xml"]);
+}
+
+function findCover (manifest, meta) {
+  var coverImage = manifest.filter(function (item) { return item.properties.indexOf("cover-image") !== -1; })[0];
+  if (!coverImage && meta.coverId) {
+    coverImage = manifest.filter(function (item) { return item.id === meta.coverId; })[0];
+  }
+  return coverImage;
 }
 
 module.exports = {
@@ -214,6 +223,7 @@ module.exports = {
   MP3s: MP3s,
   chapters: chapters,
   scripts: scripts,
-  styles: styles
+  styles: styles,
+  findCover: findCover
 };
 
