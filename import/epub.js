@@ -127,7 +127,8 @@ function extractFiles (manifest, zip, target, exclude) {
           href: item.href,
           properties: item.properties || [],
           id: item.id,
-          type: item.type
+          type: item.type,
+          originalPath: item.zipPath
         });
       } else if (url.parse(item.href).protocol) {
         return Promise.resolve(item);
@@ -137,7 +138,8 @@ function extractFiles (manifest, zip, target, exclude) {
           href: item.href,
           properties: item.properties || [],
           id: item.id,
-          type: item.type
+          type: item.type,
+          originalPath: item.zipPath
         });
       }
     }));

@@ -1,10 +1,11 @@
 "use strict";
 
-var Promise = require("bluebird");
 var sanitizer = require("sanitizer");
 var url = require("url");
+var cheerio = require("cheerio");
+var crypto = require("crypto");
 
-function shiftHeadingsSync ($) {
+function shiftHeadings ($) {
   $("h4").each(function () {
     this.tagName = "h5";
   });
@@ -23,10 +24,10 @@ function selectorToTag ($, selector, tag) {
   $(selector).each(function () {
     this.tagName = tag;
   });
-  return Promise.resolved($);
+  return $;
 }
 
-function wrapSync ($, selector, tag) {
+function wrap ($, selector, tag) {
   var tagElement = "<" + tag + "></" + tag + ">";
   $(selector).before(tagElement);
   $(selector).each(function () {
@@ -37,57 +38,51 @@ function wrapSync ($, selector, tag) {
 }
 
 function wrapAll ($, selector, tag, include) {
-  return new Promise(function (resolve, reject) {
-    // Include is a selector for elements we want to include in the wrap as long as they follow the original selector.
-    var negateNext;
-    if (include) {
-      negateNext = "p:not(" + include + ")";
-    } else {
-      negateNext = "p:not(" + selector + " + " + selector + ")";
-    }
-    $(selector).not(selector + "+" + selector).before("<" + tag + "></" + tag + ">");
-    $(selector).not(selector + "+" + selector).each(function () {
-      var previous = this.previousSibling;
-      var next = $(this).nextUntil(negateNext);
-      console.log(next.length);
-      $(this).remove();
-      next.remove();
-      $(previous).append(this);
-      next.each(function () {
-        $(previous).append($(this));
-      });
+  // Include is a selector for elements we want to include in the wrap as long as they follow the original selector.
+  var negateNext;
+  if (include) {
+    negateNext = "p:not(" + include + ")";
+  } else {
+    negateNext = "p:not(" + selector + " + " + selector + ")";
+  }
+  $(selector).not(selector + "+" + selector).before("<" + tag + "></" + tag + ">");
+  $(selector).not(selector + "+" + selector).each(function () {
+    var previous = this.previousSibling;
+    var next = $(this).nextUntil(negateNext);
+    console.log(next.length);
+    $(this).remove();
+    next.remove();
+    $(previous).append(this);
+    next.each(function () {
+      $(previous).append($(this));
     });
-    resolve($);
   });
+  return $;
 }
 
 function fixHeadings ($, fixAll) {
-  return new Promise(function (resolve, reject) {
-    var h1s = $("h1:not(h1+h1)");
-    var h1 = h1s.first();
-    shiftHeadingsSync($);
-    if (!fixAll) {
-      h1.get(0).tagName = "h1";
-    }
-    resolve($);
-  });
+  var h1s = $("h1:not(h1+h1)");
+  var h1 = h1s.first();
+  shiftHeadings($);
+  if (!fixAll) {
+    h1.get(0).tagName = "h1";
+  }
+  return $;
 }
 
 function processHTMLForMedia ($, manifest, documentHref) {
-  return new Promise(function (resolve, reject) {
-    $("img").map(function () {
-      var href = url.resolve(documentHref, $(this).attr("src"));
-      var file = manifest.filter(function (item) { return item.href === href; })[0];
-      if ($(this).attr("width")) {
-        file.width = $(this).attr("width");
-      }
-      if ($(this).attr("height")) {
-        file.height = $(this).attr("height");
-      }
-      return file;
-    });
-    resolve($, manifest);
+  $("img").map(function () {
+    var href = url.resolve(documentHref, $(this).attr("src"));
+    var file = manifest.filter(function (item) { return item.href === href; })[0];
+    if ($(this).attr("width")) {
+      file.width = $(this).attr("width");
+    }
+    if ($(this).attr("height")) {
+      file.height = $(this).attr("height");
+    }
+    return file;
   });
+  return manifest;
 }
 
 function buildMetaFromHTML ($) {
@@ -107,52 +102,46 @@ function buildMetaFromHTML ($) {
       value: $(this).attr("content")
     };
   });
-  return Promise.resolved({
+  return {
     titles: titles,
     creators: creators,
     languages: languages
-  });
+  };
 }
 
 function processHTMLFootnotes ($) {
-  return new Promise(function (resolve, reject) {
-    wrapSync($, "[rel='footnote']", "bookmaker-reference");
-    $("[rel='footnote']").each(function () {
-      var target = $(this).attr("href");
-      if (target[0] === "#") {
-        wrapSync($, target, "bookmaker-footnote");
-      }
-    });
-    resolve($);
+  wrap($, "[rel='footnote']", "bookmaker-reference");
+  $("[rel='footnote']").each(function () {
+    var target = $(this).attr("href");
+    if (target[0] === "#") {
+      wrap($, target, "bookmaker-footnote");
+    }
   });
+  return $;
 }
 
 function processEPUBFootnotes ($) {
-  return new Promise(function (resolve, reject) {
-    wrapSync($, "[epub\\:type='noteref']", "paged-reference");
-    wrapSync($, "[epub\\:type='footnote']", "paged-footnote");
-    resolve($);
-  });
+  wrap($, "[epub\\:type='noteref']", "paged-reference");
+  wrap($, "[epub\\:type='footnote']", "paged-footnote");
+  return $;
 }
 
 function epubtypeToRole ($) {
-  return new Promise(function (resolve, reject) {
-    $("[epub\\:type]").each(function () {
-      var type = $(this).attr("epub:type");
-      var roles = $(this).attr("role") ? $(this).attr("role") + " " + type : type;
-      $(this).attr("role", roles);
-      $(this).removeAttr("epub:type");
-    });
-    resolve($);
+  $("[epub\\:type]").each(function () {
+    var type = $(this).attr("epub:type");
+    var roles = $(this).attr("role") ? $(this).attr("role") + " " + type : type;
+    $(this).attr("role", roles);
+    $(this).removeAttr("epub:type");
   });
+  return $;
 }
 
-function processLinksSync ($, documentHref) {
+function processLinks ($, documentHref) {
   $("a").each(function () {
     var el = $(this);
     var href = $(this).attr("href");
     var parsedHref = url.parse(href);
-    var bfHref = new Buffer(href);
+    var bfHref = new Buffer(documentHref);
     var codedHref = "#d" + bfHref.toString("hex");
     if (href.startsWith("#")) {
       codedHref = "#d" + bfHref.toString("hex") + "-" + href.slice(1);
@@ -173,7 +162,7 @@ function processLinksSync ($, documentHref) {
 
 // Remember to add the root id on each processed HTML file.
 
-function processIDsSync ($, documentHref) {
+function processIDs ($, documentHref) {
   $("[id]").each(function () {
     var el = $(this);
     var id = el.attr("id");
@@ -184,51 +173,117 @@ function processIDsSync ($, documentHref) {
   return $;
 }
 
-function stripElementSync ($, tagName) {
+function stripElement ($, tagName) {
   $(tagName).remove();
 }
 
-function stripAttributeSync ($, attributeName) {
+function stripAttribute ($, attributeName) {
   $("[" + attributeName + "]").removeAttr(attributeName);
 }
 
 function stripStyles ($) {
-  stripElementSync($, "style");
-  stripAttributeSync($, "style");
-  $("link").map(function () {
-    if ($(this).attr("type") === "text/css") {
-      $(this).remove();
-    }
+  stripElement($, "style");
+  stripAttribute($, "style");
+  $("link[rel~='stylesheet']").map(function () {
+    $(this).remove();
   });
-  return Promise.resolved($);
+  return $;
 }
 
 function stripScripts ($) {
-  stripElementSync($, "script");
-  return Promise.resolved($);
+  stripElement($, "script");
+  return $;
 }
 
 function sanitizeHTML ($) {
-  return new Promise(function (resolve, reject) {
-    var cleanHTML = sanitizer.sanitize($.html());
-    resolve(cleanHTML);
+  var cleanHTML = sanitizer.sanitize($.html());
+  return cleanHTML;
+}
+
+function toChapter (chapter, manifest, options) {
+  options = Object.assign({
+    xml: true,
+    locations: true,
+    styles: true,
+    epub: true,
+    fixHeadings: true,
+    fixAllHeadings: true,
+    mappings: [],
+    wraps: []
+  }, options);
+  var $ = cheerio.load(chapter.contents, {
+    normalizeWhitespace: true,
+    xmlMode: options.xml
   });
+  processLinks($, chapter.originalPath);
+  processIDs($, chapter.originalPath);
+  var bfHref = new Buffer(chapter.originalPath);
+  chapter.identifier = "d" + bfHref.toString("hex");
+  if (options.locations) {
+    $("*").each(function () {
+      if (!$(this).attr("id")) {
+        var hash = "loc" + crypto.createHash("md5").update($(this).text()).digest("hex");
+        $(this).attr("id", hash);
+      }
+    });
+  }
+  if (!options.styles) {
+    stripStyles($);
+  } else {
+    chapter.styles = $("link[rel~='stylesheet'], style").map(function () {
+      if ($(this).attr("src")) {
+        return {
+          src: $(this).attr("src")
+        };
+      } else {
+        return {
+          content: $(this).text()
+        };
+      }
+    }).toArray();
+  }
+  stripScripts($);
+  if (options.epub) {
+    processEPUBFootnotes($);
+    epubtypeToRole($);
+  }
+  processHTMLForMedia($, manifest, chapter.originalPath);
+  if (options.fixHeadings) {
+    fixHeadings($, options.fixAllHeadings);
+  }
+  if (options.mappings) {
+    options.mappings.forEach(function (item) {
+      selectorToTag($, item.selector, item.tag);
+    });
+  }
+  if (options.wraps) {
+    options.wraps.forEach(function (item) {
+      if (item.all) {
+        wrapAll($, item.selector, item.tag, item.include);
+      } else {
+        wrap($, item.selector, item.tag);
+      }
+    });
+  }
+  chapter.contents = sanitizeHTML($);
+  return chapter;
 }
 
 module.exports = {
-  shiftHeadingsSync: shiftHeadingsSync,
+  shiftHeadings: shiftHeadings,
   selectorToTag: selectorToTag,
-  wrapSync: wrapSync,
+  wrap: wrap,
   wrapAll: wrapAll,
   processHTMLForMedia: processHTMLForMedia,
   buildMetaFromHTML: buildMetaFromHTML,
   processHTMLFootnotes: processHTMLFootnotes,
   processEPUBFootnotes: processEPUBFootnotes,
   epubtypeToRole: epubtypeToRole,
-  processIDsSync: processIDsSync,
-  processLinksSync: processLinksSync,
+  processIDs: processIDs,
+  processLinks: processLinks,
   stripStyles: stripStyles,
   stripScripts: stripScripts,
   sanitizeHTML: sanitizeHTML,
-  fixHeadings: fixHeadings
+  fixHeadings: fixHeadings,
+  toChapter: toChapter
 };
