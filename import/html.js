@@ -136,26 +136,30 @@ function epubtypeToRole ($) {
   return $;
 }
 
+function encodeHref (documentHref, href) {
+  var parsedHref = url.parse(href);
+  var bfHref = new Buffer(documentHref);
+  var codedHref = "#d" + bfHref.toString("hex");
+  if (href.startsWith("#")) {
+    codedHref = "#d" + bfHref.toString("hex") + "-" + href.slice(1);
+  } else if (!parsedHref.protocol && !parsedHref.host) {
+    if (parsedHref.hash) {
+      var hash = "-" + parsedHref.hash.slice(1);
+      parsedHref.hash = "";
+      href = url.format(parsedHref);
+    }
+    href = url.resolve(documentHref, href);
+    bfHref = new Buffer(href);
+    codedHref = "#d" + bfHref.toString("hex") + hash;
+  }
+  return codedHref;
+}
+
 function processLinks ($, documentHref) {
   $("a").each(function () {
     var el = $(this);
     var href = $(this).attr("href");
-    var parsedHref = url.parse(href);
-    var bfHref = new Buffer(documentHref);
-    var codedHref = "#d" + bfHref.toString("hex");
-    if (href.startsWith("#")) {
-      codedHref = "#d" + bfHref.toString("hex") + "-" + href.slice(1);
-    } else if (!parsedHref.protocol && !parsedHref.host) {
-      if (parsedHref.hash) {
-        var hash = "-" + parsedHref.hash.slice(1);
-        parsedHref.hash = "";
-        href = url.format(parsedHref);
-      }
-      href = url.resolve(documentHref, href);
-      bfHref = new Buffer(href);
-      codedHref = "#d" + bfHref.toString("hex") + hash;
-    }
-    el.attr("href", codedHref);
+    el.attr("href", encodeHref(documentHref, href));
   });
   return $;
 }
@@ -200,6 +204,59 @@ function sanitizeHTML ($) {
   return cleanHTML;
 }
 
+function guideToLandmarks (OPF) {
+  var list = OPF("guide > reference").map(function () {
+    if (OPF(this).attr("type") === "text") {
+      OPF(this).attr("type", "bodymatter");
+    }
+    var href = encodeHref(OPF("package").attr("data-full-path"), OPF(this).attr("href"));
+    return "<li><a href='" + href + "' epub:type='" + OPF(this).attr("type") + "'>" + OPF(this).attr("title") + "</a></li>";
+  }).toArray().join("\n");
+  return "<ol>" + list + "</ol>";
+}
+
+function ncxToNav ($, navPoints, OPF) {
+  var nav = ["<ol>"];
+  navPoints.each(function () {
+    var href = encodeHref(OPF("package").attr("data-full-path"), $("content", this).attr("src"));
+    var li = "<li>\n\t<a href='" + href + "'>" + $("navLabel > text", this).text() + "</a>";
+    nav.push(li);
+    if ($(this).children("navPoint")) {
+      nav.push(ncxToNav($, $(this).children("navPoint")), OPF);
+    }
+    nav.push("</li>");
+  });
+  nav.push("</ol>");
+  return nav.join("\n");
+}
+
+function outlineAndLandmarks (manifest, OPF) {
+  var nav = manifest.filter(function (item) { return item.properties.indexOf("nav") !== -1; })[0];
+  var $;
+  if (nav) {
+    $ = cheerio.load(nav, {
+      normalizeWhitespace: true,
+      xmlMode: nav.type === "application/xhtml+xml"
+    });
+    $ = processLinks($, nav.originalPath);
+    return {
+      outline: $("nav[epub\\:type='toc']").html(),
+      landmarks: $("nav[epub\\:type='landmarks']").html()
+    };
+  } else {
+    var navId = OPF("spine").attr("toc");
+    nav = manifest.filter(function (item) { return item.id === navId; })[0];
+    $ = cheerio.load(nav, {
+      normalizeWhitespace: true,
+      xmlMode: true
+    });
+    return {
+      landmarks: guideToLandmarks(OPF),
+      outline: ncxToNav($, $("navMap").children("navPoint"), OPF)
+    };
+  }
+}
+
 function toChapter (chapter, manifest, options) {
   options = Object.assign({
     xml: true,
@@ -209,7 +266,8 @@ function toChapter (chapter, manifest, options) {
     fixHeadings: true,
     fixAllHeadings: true,
     mappings: [],
-    wraps: []
+    wraps: [],
+    stripIframes: true
   }, options);
   var $ = cheerio.load(chapter.contents, {
     normalizeWhitespace: true,
@@ -243,6 +301,9 @@ function toChapter (chapter, manifest, options) {
     }).toArray();
   }
   stripScripts($);
+  if (options.stripIframes) {
+    stripElement($, "iframe");
+  }
   if (options.epub) {
     processEPUBFootnotes($);
     epubtypeToRole($);
@@ -285,5 +346,6 @@ module.exports = {
   stripScripts: stripScripts,
   sanitizeHTML: sanitizeHTML,
   fixHeadings: fixHeadings,
-  toChapter: toChapter
+  toChapter: toChapter,
+  outlineAndLandmarks: outlineAndLandmarks
 };
