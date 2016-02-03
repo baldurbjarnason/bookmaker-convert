@@ -4,7 +4,7 @@ var tape = require("tape");
 var epub = require("../import/epub.js");
 var path = require("path");
 
-tape.test("Getting zip", function (t) {
+tape.test("Testing epub processing", function (t) {
   t.plan(20);
   var epubResult = {};
   epub.getZip(path.resolve(__dirname, "assets/test.zip")).then(function (zip) {
