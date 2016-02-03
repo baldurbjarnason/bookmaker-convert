@@ -13,3 +13,4 @@
 * Chapter wrapping: preamble (up to first h1), pre-matter (from first h1 to first h2), chapters (each h2 to the next one), post-matter (from last h2 to end).
 * A manifest for the files that aren't linked or embedded directly in the HTML. Basically style resources.
 * Decode obfuscated fonts?
+* srcset, again.

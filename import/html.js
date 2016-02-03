@@ -109,23 +109,6 @@ function buildMetaFromHTML ($) {
   };
 }
 
-function processHTMLFootnotes ($) {
-  wrap($, "[rel='footnote']", "bookmaker-reference");
-  $("[rel='footnote']").each(function () {
-    var target = $(this).attr("href");
-    if (target[0] === "#") {
-      wrap($, target, "bookmaker-footnote");
-    }
-  });
-  return $;
-}
-
-function processEPUBFootnotes ($) {
-  wrap($, "[epub\\:type='noteref']", "paged-reference");
-  wrap($, "[epub\\:type='footnote']", "paged-footnote");
-  return $;
-}
-
 function epubtypeToRole ($) {
   $("[epub\\:type]").each(function () {
     var type = $(this).attr("epub:type");
@@ -170,7 +153,7 @@ function processLinks ($, manifest, documentHref) {
   $("[src]").each(function () {
     // url.resolve here means that if the src is remote, you'll get back the remote url,
     // otherwise you should get back what corresponds to the href property in the manifest items.
-    // Of course, this doesn't handle absolute urls in src attributes.
+    // Of course, this doesn't handle absolute urls in src attributes, nor srcset.
     var fullHref = url.resolve(documentHref, $(this).attr("src"));
     $(this).attr("src", fullHref);
   });
@@ -342,7 +325,6 @@ function toChapter (chapter, manifest, options) {
     stripElement($, "iframe");
   }
   if (options.epub) {
-    processEPUBFootnotes($);
     epubtypeToRole($);
   }
   if (options.resizeImages) {
@@ -376,8 +358,6 @@ module.exports = {
   wrapAll: wrapAll,
   imgSizes: imgSizes,
   buildMetaFromHTML: buildMetaFromHTML,
-  processHTMLFootnotes: processHTMLFootnotes,
-  processEPUBFootnotes: processEPUBFootnotes,
   epubtypeToRole: epubtypeToRole,
   processIDs: processIDs,
   processLinks: processLinks,
