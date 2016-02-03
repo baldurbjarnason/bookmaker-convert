@@ -95,14 +95,26 @@ function buildManifest (OPF) {
 }
 
 function extractFiles (manifest, zip, target, exclude) {
-  var filepaths = manifest.map(function (item) {
+  // These are directories we need to ensure exists.
+  // Obviously don't need directories for the ones we aren't going to write out to fs
+  var filepaths = manifest
+  .filter(function (item) { return item.type !== "application/xhtml+xml"; })
+  .filter(function (item) { return item.type !== "text/css"; })
+  .filter(function (item) { return item.type !== "application/x-dtbncx+xml"; })
+  .filter(function (item) { return item.type !== "application/javascript"; })
+  .map(function (item) {
     return path.dirname(path.resolve(target, item.href));
   });
+  // Sometimes you don't want all of the files. And we never want JS in bookmaker imports.
   if (exclude) {
+    exclude.push("application/javascript");
     exclude.forEach(function (type) {
       filepaths = filepaths.filter(function (item) { return item.type !== type; });
     });
+  } else {
+    exclude = ["application/javascript"];
   }
+  // Makes sure all of the targets exist, then return an array of promises for zip reads or copies.
   return Promise.all(filepaths.map(function (filepath) {
     fs.ensureDirAsync(filepath);
   })).then(function () {
