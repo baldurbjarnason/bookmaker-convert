@@ -227,6 +227,13 @@ function findCover (manifest, meta) {
   return coverImage;
 }
 
+function checkForMathML (manifest, meta) {
+  var mathml = manifest.filter(function (item) { return item.properties.indexOf("mathml") !== -1; });
+  if (mathml) {
+    meta.mathml = true;
+  }
+}
+
 module.exports = {
   getZip: getZip,
   getOPF: getOPF,
@@ -241,6 +248,7 @@ module.exports = {
   chapters: chapters,
   scripts: scripts,
   styles: styles,
-  findCover: findCover
+  findCover: findCover,
+  checkForMathML: checkForMathML
 };
 
