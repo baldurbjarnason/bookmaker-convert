@@ -99,6 +99,7 @@ function extractFiles (manifest, zip, target, exclude) {
   // Obviously don't need directories for the ones we aren't going to write out to fs
   var filepaths = manifest
   .filter(function (item) { return item.type !== "application/xhtml+xml"; })
+  .filter(function (item) { return item.type !== "text/html"; })
   .filter(function (item) { return item.type !== "text/css"; })
   .filter(function (item) { return item.type !== "application/x-dtbncx+xml"; })
   .filter(function (item) { return item.type !== "application/javascript"; })
@@ -121,7 +122,7 @@ function extractFiles (manifest, zip, target, exclude) {
     fs.ensureDirAsync(target);
   }).then(function () {
     return Promise.all(manifest.map(function (item) {
-      if (item.type === "application/xhtml+xml" || item.type === "text/css" || item.type === "application/x-dtbncx+xml") {
+      if (item.type === "application/xhtml+xml" || item.type === "text/html" || item.type === "text/css" || item.type === "application/x-dtbncx+xml") {
         return Promise.props({
           contents: zip.readFileAsync(item.zipPath).then(function (buf) { return buf.toString(); }),
           href: item.href,
