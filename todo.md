@@ -21,4 +21,4 @@
 * Add landmark parsing.
 * Chapter wrapping: preamble (up to first h1), pre-matter (from first h1 to first h2), chapters (each h2 to the next one), post-matter (from last h2 to end).
 * Need a solid story for handling style tags.
-* Remote resources.
+* Remote resources. I think the best thing to do is to preserve remote resources and make sure they carry across properly in the final epub.

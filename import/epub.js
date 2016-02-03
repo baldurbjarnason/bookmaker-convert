@@ -117,6 +117,8 @@ function extractFiles (manifest, zip, target, exclude) {
           id: item.id,
           type: item.type
         });
+      } else if (url.parse(item.href).protocol) {
+        return Promise.resolve(item);
       } else {
         return Promise.props({
           contents: zip.copyFileAsync(item.zipPath, path.resolve(target, item.href)),
