@@ -70,7 +70,7 @@ function fixHeadings ($, fixAll) {
   return $;
 }
 
-function processHTMLForMedia ($, manifest, documentHref) {
+function imgSizes ($, manifest, documentHref) {
   $("img").map(function () {
     var href = url.resolve(documentHref, $(this).attr("src"));
     var file = manifest.filter(function (item) { return item.href === href; })[0];
@@ -151,20 +151,32 @@ function encodeHref (documentHref, href) {
     href = url.resolve(documentHref, href);
     bfHref = new Buffer(href);
     codedHref = "#d" + bfHref.toString("hex") + hash;
+  } else {
+    // Do nothing, don't change the href
+    codedHref = href;
   }
   return codedHref;
 }
 
-function processLinks ($, documentHref) {
+function processLinks ($, manifest, documentHref) {
   $("a").each(function () {
     var el = $(this);
     var href = $(this).attr("href");
-    el.attr("href", encodeHref(documentHref, href));
+    var item = manifest.filter(function (item) { return item.href === url.resolve(documentHref, href); });
+    if (item && (item[0].type === "application/xhtml+xml" || item[0].type === "text/html")) {
+      el.attr("href", encodeHref(documentHref, href));
+    }
   });
+  $("[src]").each(function () {
+    // url.resolve here means that if the src is remote, you'll get back the remote url,
+    // otherwise you should get back what corresponds to the href property in the manifest items.
+    // Of course, this doesn't handle absolute urls in src attributes.
+    var fullHref = url.resolve(documentHref, $(this).attr("src"));
+    $(this).attr("src", fullHref);
+  });
+
   return $;
 }
-
-// Remember to add the root id on each processed HTML file.
 
 function processIDs ($, documentHref) {
   $("[id]").each(function () {
@@ -238,7 +250,7 @@ function outlineAndLandmarks (manifest, OPF) {
       normalizeWhitespace: true,
       xmlMode: nav.type === "application/xhtml+xml"
     });
-    $ = processLinks($, nav.originalPath);
+    $ = processLinks($, nav.href);
     return {
       outline: $("nav[epub\\:type='toc']").html(),
       landmarks: $("nav[epub\\:type='landmarks']").html()
@@ -257,6 +269,30 @@ function outlineAndLandmarks (manifest, OPF) {
   }
 }
 
+function htmlSrcList ($, documentHref) {
+  var manifest = $("[src]").map(function () {
+    var entry = {
+      href: url.resolve(documentHref, $(this).attr("src"))
+    };
+    return entry;
+  }).toArray();
+  return manifest;
+}
+
+function styleManifest (chapters, manifest) {
+  var chapterManifest = [].concat(chapters.map(function (item) {
+    return htmlSrcList(cheerio.load(item.contents), item.href);
+  }));
+  manifest = manifest
+  .filter(function (item) { return item.type !== "application/xhtml+xml"; })
+  .filter(function (item) { return item.type !== "text/html"; })
+  .filter(function (item) { return item.type !== "text/css"; })
+  .filter(function (item) { return item.type !== "application/x-dtbncx+xml"; })
+  .filter(function (item) { return item.type !== "application/javascript"; })
+  .filter(function (item) { return chapterManifest.indexOf(item.href) === -1; });
+  return manifest;
+}
+
 function toChapter (chapter, manifest, options) {
   options = Object.assign({
     xml: true,
@@ -267,15 +303,16 @@ function toChapter (chapter, manifest, options) {
     fixAllHeadings: true,
     mappings: [],
     wraps: [],
-    stripIframes: true
+    stripIframes: true,
+    resizeImages: true
   }, options);
   var $ = cheerio.load(chapter.contents, {
     normalizeWhitespace: true,
     xmlMode: options.xml
   });
-  processLinks($, chapter.originalPath);
-  processIDs($, chapter.originalPath);
-  var bfHref = new Buffer(chapter.originalPath);
+  processLinks($, manifest, chapter.href);
+  processIDs($, chapter.href);
+  var bfHref = new Buffer(chapter.href);
   chapter.identifier = "d" + bfHref.toString("hex");
   if (options.locations) {
     $("*").each(function () {
@@ -308,7 +345,9 @@ function toChapter (chapter, manifest, options) {
     processEPUBFootnotes($);
     epubtypeToRole($);
   }
-  processHTMLForMedia($, manifest, chapter.originalPath);
+  if (options.resizeImages) {
+    imgSizes($, manifest, chapter.href);
+  }
   if (options.fixHeadings) {
     fixHeadings($, options.fixAllHeadings);
   }
@@ -335,7 +374,7 @@ module.exports = {
   selectorToTag: selectorToTag,
   wrap: wrap,
   wrapAll: wrapAll,
-  processHTMLForMedia: processHTMLForMedia,
+  imgSizes: imgSizes,
   buildMetaFromHTML: buildMetaFromHTML,
   processHTMLFootnotes: processHTMLFootnotes,
   processEPUBFootnotes: processEPUBFootnotes,
@@ -347,5 +386,6 @@ module.exports = {
   sanitizeHTML: sanitizeHTML,
   fixHeadings: fixHeadings,
   toChapter: toChapter,
-  outlineAndLandmarks: outlineAndLandmarks
+  outlineAndLandmarks: outlineAndLandmarks,
+  styleManifest: styleManifest
 };
