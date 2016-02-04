@@ -4,6 +4,8 @@ var sanitizer = require("sanitizer");
 var url = require("url");
 var cheerio = require("cheerio");
 var getZeroPaddedStringCounter = require("util.js").getZeroPaddedStringCounter;
+var intersection = require("array-intersection");
+var diff = require("arr-diff");
 
 function shiftHeadings ($) {
   $("h4").each(function () {
@@ -253,18 +255,6 @@ function outlineAndLandmarks (manifest, OPF) {
 }
 
 function toChapter (chapter, manifest, options) {
-  options = Object.assign({
-    xml: true,
-    locations: true,
-    styles: true,
-    epub: true,
-    fixHeadings: true,
-    fixAllHeadings: true,
-    mappings: [],
-    wraps: [],
-    stripIframes: true,
-    resizeImages: true
-  }, options);
   var $ = cheerio.load(chapter.contents, {
     normalizeWhitespace: true,
     xmlMode: options.xml
@@ -273,11 +263,10 @@ function toChapter (chapter, manifest, options) {
   processIDs($, chapter.href);
   var bfHref = new Buffer(chapter.href);
   chapter.identifier = "d" + bfHref.toString("hex");
-  if (options.locations) {
-    var counter = getZeroPaddedStringCounter();
+  if (options.counter) {
     $("*").each(function () {
       if (!$(this).attr("id")) {
-        var hash = "loc" + counter();
+        var hash = "loc" + options.counter();
         $(this).attr("id", hash);
       }
     });
@@ -287,14 +276,11 @@ function toChapter (chapter, manifest, options) {
   } else {
     chapter.styles = $("link[rel~='stylesheet'], style").map(function () {
       if ($(this).attr("src")) {
-        return {
-          src: $(this).attr("src")
-        };
-      } else {
-        return {
-          content: $(this).text()
-        };
+        return url.resolve(chapter.href, $(this).attr("src"));
       }
+    }).toArray();
+    chapter.styleElements = $("style").map(function () {
+      $(this).text();
     }).toArray();
   }
   stripScripts($);
@@ -324,8 +310,57 @@ function toChapter (chapter, manifest, options) {
       }
     });
   }
-  chapter.contents = sanitizeHTML($);
+  chapter.bodyClasses = $("body").attr("class");
+  chapter.htmlClasses = $("html").attr("class");
+  chapter.bodyId = $("body").attr("id");
+  chapter.htmlId = $("html").attr("id");
+  chapter.title = $("title").text();
+  $("body").addClass("paged-body");
+  $("body").get(0).tagName = "paged-body";
+  chapter.contents = sanitizeHTML($(".paged-body").html());
   return chapter;
+}
+
+function findCommonStyleSheets (chapters) {
+  return intersection.apply(undefined, chapters.map(function (chapter) {
+    return chapter.styles;
+  }));
+}
+
+function processChapters (chapters, manifest, options) {
+  options = Object.assign({
+    xml: true,
+    counter: getZeroPaddedStringCounter(),
+    styles: true,
+    epub: true,
+    fixHeadings: true,
+    fixAllHeadings: true,
+    mappings: [],
+    wraps: [],
+    stripIframes: true,
+    resizeImages: true
+  }, options);
+  chapters = chapters.map(function (item) {
+    if (item.type === "text/html") {
+      options.xml = false;
+    }
+    return toChapter(item, manifest, options);
+  });
+  var sheets = findCommonStyleSheets(chapters);
+  chapters = chapters.map(function (item, index) {
+    item.styles = diff(item.styles, sheets);
+    if (!item.htmlId) {
+      item.htmlId = "chapter" + index;
+    }
+    item.styles = item.styles.map(function (sheetHref) {
+      var style = manifest.filter(function (file) { return file.href === sheetHref; })[0];
+      // This lets us properly process the CSS later
+      style.prefix = "#" + item.htmlId;
+      return sheetHref;
+    });
+    return item;
+  });
+  return chapters;
 }
 
 module.exports = {
@@ -343,5 +378,6 @@ module.exports = {
   sanitizeHTML: sanitizeHTML,
   fixHeadings: fixHeadings,
   toChapter: toChapter,
-  outlineAndLandmarks: outlineAndLandmarks
+  outlineAndLandmarks: outlineAndLandmarks,
+  processChapters: processChapters
 };
