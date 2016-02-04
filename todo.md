@@ -14,3 +14,4 @@
 * A manifest for the files that aren't linked or embedded directly in the HTML. Basically style resources.
 * Decode obfuscated fonts?
 * srcset, again.
+* Pretty much have to parse the CSS for url(). Probably using something like `String.prototype.match(/url\(\s*?((?:"|')?)(.+?)\1\s*?\)/gi); // Returns the match, quote style, url.`. So generate an epub manifest by parsing the CSS for url() and the HTML for [src] and [src-set]

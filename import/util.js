@@ -5,7 +5,7 @@ function getZeroPaddedStringCounter () {
   return function () {
     counter = counter + 1;
 
-    return ("000000" + counter).slice(-6);
+    return ("0000000000" + counter).slice(-10);
   };
 }
 

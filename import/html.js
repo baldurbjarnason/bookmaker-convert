@@ -3,7 +3,7 @@
 var sanitizer = require("sanitizer");
 var url = require("url");
 var cheerio = require("cheerio");
-var crypto = require("crypto");
+var getZeroPaddedStringCounter = require("util.js").getZeroPaddedStringCounter;
 
 function shiftHeadings ($) {
   $("h4").each(function () {
@@ -298,9 +298,10 @@ function toChapter (chapter, manifest, options) {
   var bfHref = new Buffer(chapter.href);
   chapter.identifier = "d" + bfHref.toString("hex");
   if (options.locations) {
+    var counter = getZeroPaddedStringCounter();
     $("*").each(function () {
       if (!$(this).attr("id")) {
-        var hash = "loc" + crypto.createHash("md5").update($(this).text()).digest("hex");
+        var hash = "loc" + counter();
         $(this).attr("id", hash);
       }
     });
