@@ -252,30 +252,6 @@ function outlineAndLandmarks (manifest, OPF) {
   }
 }
 
-function htmlSrcList ($, documentHref) {
-  var manifest = $("[src]").map(function () {
-    var entry = {
-      href: url.resolve(documentHref, $(this).attr("src"))
-    };
-    return entry;
-  }).toArray();
-  return manifest;
-}
-
-function styleManifest (chapters, manifest) {
-  var chapterManifest = [].concat(chapters.map(function (item) {
-    return htmlSrcList(cheerio.load(item.contents), item.href);
-  }));
-  manifest = manifest
-  .filter(function (item) { return item.type !== "application/xhtml+xml"; })
-  .filter(function (item) { return item.type !== "text/html"; })
-  .filter(function (item) { return item.type !== "text/css"; })
-  .filter(function (item) { return item.type !== "application/x-dtbncx+xml"; })
-  .filter(function (item) { return item.type !== "application/javascript"; })
-  .filter(function (item) { return chapterManifest.indexOf(item.href) === -1; });
-  return manifest;
-}
-
 function toChapter (chapter, manifest, options) {
   options = Object.assign({
     xml: true,
@@ -367,6 +343,5 @@ module.exports = {
   sanitizeHTML: sanitizeHTML,
   fixHeadings: fixHeadings,
   toChapter: toChapter,
-  outlineAndLandmarks: outlineAndLandmarks,
-  styleManifest: styleManifest
+  outlineAndLandmarks: outlineAndLandmarks
 };
