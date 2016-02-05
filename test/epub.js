@@ -9,7 +9,7 @@ Promise.promisifyAll(require("fs-extra"));
 tape.test("Testing epub processing", function (t) {
   t.plan(20);
   var epubResult = {};
-  epub.getZip(path.resolve(__dirname, "assets/test.zip")).then(function (zip) {
+  epub.getZip(path.resolve(__dirname, "assets/test2.zip")).then(function (zip) {
     epubResult.zip = zip;
     t.ok(zip, "Zip should be loaded");
     return epub.getOPF(zip);

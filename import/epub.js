@@ -21,7 +21,7 @@ function getOPF (zip) {
       normalizeWhitespace: true,
       xmlMode: true
     });
-    OPFpath = container("rootfile").attr("full-path");
+    OPFpath = url.resolve("META-INF/container.xml", container("rootfile").attr("full-path"));
     return zip.readFileAsync(OPFpath);
   }).then(function (OPFFile) {
     var OPF = cheerio.load(OPFFile, {
