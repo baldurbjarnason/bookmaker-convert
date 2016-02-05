@@ -1,0 +1,15 @@
+body {
+	font-style: italic;
+}
+
+html {
+	background-color: magenta;
+}
+
+#thing {
+	margin: 10px;
+}
+
+p + p {
+	text-indent: 30px;
+}

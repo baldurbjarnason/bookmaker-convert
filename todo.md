@@ -22,3 +22,4 @@
 * Code that auto-guesses landmarks.
 * `<paged-generated-chapter type="toc">` or `<paged-generated-chapter type="titlepage">`
 * Need to remember in the future (when I get to that) that IDs in HTML sources may not be valide XHTML IDs.
+* Switch HTML processing to be entirely async using promises.

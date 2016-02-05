@@ -325,7 +325,7 @@ function toChapter (chapter, manifest, options) {
   chapter.title = $("title").text();
   $("body").addClass("paged-chapter-body");
   $("body").get(0).tagName = "paged-chapter-body";
-  chapter.contents = sanitizeHTML($(".paged-body").html());
+  chapter.contents = sanitizeHTML($(".paged-chapter-body").html());
   return chapter;
 }
 
