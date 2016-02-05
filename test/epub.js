@@ -3,6 +3,8 @@
 var tape = require("tape");
 var epub = require("../import/epub.js");
 var path = require("path");
+var Promise = require("bluebird");
+Promise.promisifyAll(require("fs-extra"));
 
 tape.test("Testing epub processing", function (t) {
   t.plan(20);

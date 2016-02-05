@@ -2,7 +2,7 @@
 
 var cheerio = require("cheerio");
 var Promise = require("bluebird");
-var fs = Promise.promisifyAll(require("fs-extra"));
+var fs = require("fs-extra");
 var path = require("path");
 var zipfile = require("zipfile");
 var url = require("url");
@@ -129,6 +129,7 @@ function extractFiles (manifest, zip, target, exclude) {
           properties: item.properties || [],
           id: item.id,
           type: item.type,
+          target: target,
           originalPath: item.zipPath
         });
       } else if (url.parse(item.href).protocol) {
@@ -140,6 +141,7 @@ function extractFiles (manifest, zip, target, exclude) {
           properties: item.properties || [],
           id: item.id,
           type: item.type,
+          target: target,
           originalPath: item.zipPath
         });
       }

@@ -6,6 +6,7 @@ var cheerio = require("cheerio");
 var getZeroPaddedStringCounter = require("util.js").getZeroPaddedStringCounter;
 var intersection = require("array-intersection");
 var diff = require("arr-diff");
+var path = require("path");
 
 function shiftHeadings ($) {
   $("h4").each(function () {
@@ -282,6 +283,13 @@ function toChapter (chapter, manifest, options) {
     chapter.styleElements = $("style").map(function () {
       $(this).text();
     }).toArray();
+    var chapterStyles = {
+      contents: chapter.styleElements.join("\n/* */"),
+      href: url.resolve(chapter.href, path.basename(chapter.href, path.extname(chapter.href)) + ".css"),
+      type: "text/css"
+    };
+    manifest.push(chapterStyles);
+    chapter.styles.push(chapterStyles.href);
   }
   stripScripts($);
   if (options.stripIframes) {
@@ -315,8 +323,8 @@ function toChapter (chapter, manifest, options) {
   chapter.bodyId = $("body").attr("id");
   chapter.htmlId = $("html").attr("id");
   chapter.title = $("title").text();
-  $("body").addClass("paged-body");
-  $("body").get(0).tagName = "paged-body";
+  $("body").addClass("paged-chapter-body");
+  $("body").get(0).tagName = "paged-chapter-body";
   chapter.contents = sanitizeHTML($(".paged-body").html());
   return chapter;
 }
@@ -343,6 +351,8 @@ function processChapters (chapters, manifest, options) {
   chapters = chapters.map(function (item) {
     if (item.type === "text/html") {
       options.xml = false;
+    } else {
+      options.xml = true; // Need both cases because options is shared across all chapters. Dumb of me.
     }
     return toChapter(item, manifest, options);
   });
@@ -359,6 +369,14 @@ function processChapters (chapters, manifest, options) {
       return sheetHref;
     });
     return item;
+  });
+  manifest = manifest.map(function (file) {
+    if (file.type === "text/css" && !file.prefix) {
+      file.prefix = "#paged-book";
+      return file;
+    } else {
+      return file;
+    }
   });
   return chapters;
 }
