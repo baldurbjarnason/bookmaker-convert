@@ -21,7 +21,6 @@ tape.test("Testing CSS processing", function (t) {
     t.ok(styles[2].contents.startsWith("#paged-book"), "CSS3 should be prefixed");
     return css.writeCSS(styles);
   }).then(function (paths) {
-    console.log(paths);
-    t.ok(paths);
+    t.ok(paths, "The write function should return an array of paths.");
   });
 });
