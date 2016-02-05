@@ -13,9 +13,7 @@
 * Chapter wrapping: preamble (up to first h1), pre-matter (from first h1 to first h2), chapters (each h2 to the next one), post-matter (from last h2 to end).
 * A manifest for the files that aren't linked or embedded directly in the HTML. Basically style resources.
 * Decode obfuscated fonts?
-* srcset, again.
 * Pretty much have to parse the CSS for url(). Probably using something like `String.prototype.match(/url\(\s*?((?:"|')?)(.+?)\1\s*?\)/gi); // Returns the match, quote style, url.`. So generate an epub manifest by parsing the CSS for url() and the HTML for [src] and [src-set]
-* Parse chapter-specific CSS files and prefix all selectors with the id for the new chapter element.
 * Write out style elements and add to manifest.
 * epub:type needs to be copied into a data-epub-type attribute as well, otherwise the exporter won't be able to tell the difference between ARIA roles and epub roles. Also on import, need to check if the epub type is already in the role.
 * Hooks for adding custom front and back matter (e.g. title pages, contents).

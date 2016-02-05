@@ -144,6 +144,14 @@ function encodeHref (documentHref, href) {
   return codedHref;
 }
 
+function encodeSrcset (documentHref, srcset) {
+  return srcset.split(/\,\s*/g).map(function (item) {
+    item = item.split(/\s+/);
+    item[0] = encodeHref(documentHref, item[0]);
+    return item.join(" ");
+  }).join(", ");
+}
+
 function processLinks ($, manifest, documentHref) {
   $("a").each(function () {
     var el = $(this);
@@ -159,6 +167,10 @@ function processLinks ($, manifest, documentHref) {
     // Of course, this doesn't handle absolute urls in src attributes, nor srcset.
     var fullHref = url.resolve(documentHref, $(this).attr("src"));
     $(this).attr("src", fullHref);
+  });
+  $("[srcset]").each(function () {
+    var srcset = $(this).attr("srcset");
+    $(this).attr("srcset", encodeSrcset(documentHref, srcset));
   });
 
   return $;
