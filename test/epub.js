@@ -7,7 +7,7 @@ var Promise = require("bluebird");
 Promise.promisifyAll(require("fs-extra"));
 
 tape.test("Testing epub processing", function (t) {
-  t.plan(20);
+  t.plan(23);
   var epubResult = {};
   epub.getZip(path.resolve(__dirname, "assets/test2.zip")).then(function (zip) {
     epubResult.zip = zip;
@@ -51,5 +51,11 @@ tape.test("Testing epub processing", function (t) {
     cover.properties = [];
     var cover2 = epub.findCover(epubResult.manifest, epubResult.meta);
     t.ok(cover2, "EPUB should have cover, even if they aren't using the recommended EPUB3 method");
+    var mathml = epub.checkForMathML(epubResult.manifest);
+    t.notOk(mathml, "MathML should be false.");
+    return epub.createBook(path.resolve(__dirname, "assets/test2.zip"), "test/tmp/");
+  }).then(function (book) {
+    t.ok(book, "The combined book object should exist");
+    t.ok(book.stylesheets, "The combined book object should have stylesheets");
   });
 });

@@ -3,7 +3,7 @@
 var sanitizer = require("sanitizer");
 var url = require("url");
 var cheerio = require("cheerio");
-var getZeroPaddedStringCounter = require("util.js").getZeroPaddedStringCounter;
+var getZeroPaddedStringCounter = require("./util.js").getZeroPaddedStringCounter;
 var intersection = require("array-intersection");
 var diff = require("arr-diff");
 var path = require("path");
@@ -52,7 +52,6 @@ function wrapAll ($, selector, tag, include) {
   $(selector).not(selector + "+" + selector).each(function () {
     var previous = this.previousSibling;
     var next = $(this).nextUntil(negateNext);
-    console.log(next.length);
     $(this).remove();
     next.remove();
     $(previous).append(this);
@@ -114,10 +113,14 @@ function buildMetaFromHTML ($) {
 
 function epubtypeToRole ($) {
   $("[epub\\:type]").each(function () {
-    var type = $(this).attr("epub:type");
-    var roles = $(this).attr("role") ? $(this).attr("role") + " " + type : type;
-    $(this).attr("role", roles);
-    $(this).removeAttr("epub:type");
+    // If there is a pre-existing role in the source, assume that the epub:type is there for
+    // legacy purposes and that the document author knew what they were doing.
+    if ($(this).attr("role")) {
+      var type = $(this).attr("epub:type");
+      var roles = $(this).attr("role") ? $(this).attr("role") + " " + type : type;
+      $(this).attr("role", roles);
+      $(this).removeAttr("epub:type");
+    }
   });
   return $;
 }
@@ -133,10 +136,13 @@ function encodeHref (documentHref, href) {
       var hash = "-" + parsedHref.hash.slice(1);
       parsedHref.hash = "";
       href = url.format(parsedHref);
+      bfHref = new Buffer(href);
+      codedHref = "#d" + bfHref.toString("hex") + hash;
+    } else {
+      href = url.resolve(documentHref, href);
+      bfHref = new Buffer(href);
+      codedHref = "#d" + bfHref.toString("hex");
     }
-    href = url.resolve(documentHref, href);
-    bfHref = new Buffer(href);
-    codedHref = "#d" + bfHref.toString("hex") + hash;
   } else {
     // Do nothing, don't change the href
     codedHref = href;
@@ -157,7 +163,7 @@ function processLinks ($, manifest, documentHref) {
     var el = $(this);
     var href = $(this).attr("href");
     var item = manifest.filter(function (item) { return item.href === url.resolve(documentHref, href); });
-    if (item && (item[0].type === "application/xhtml+xml" || item[0].type === "text/html")) {
+    if (item.length !== 0 && ((item[0].type === "application/xhtml+xml") || (item && item[0].type === "text/html"))) {
       el.attr("href", encodeHref(documentHref, href));
     }
   });
@@ -209,8 +215,8 @@ function stripScripts ($) {
   return $;
 }
 
-function sanitizeHTML ($) {
-  var cleanHTML = sanitizer.sanitize($.html());
+function sanitizeHTML (html) {
+  var cleanHTML = sanitizer.sanitize(html);
   return cleanHTML;
 }
 
@@ -244,11 +250,11 @@ function outlineAndLandmarks (manifest, OPF) {
   var nav = manifest.filter(function (item) { return item.properties.indexOf("nav") !== -1; })[0];
   var $;
   if (nav) {
-    $ = cheerio.load(nav, {
+    $ = cheerio.load(nav.contents, {
       normalizeWhitespace: true,
       xmlMode: nav.type === "application/xhtml+xml"
     });
-    $ = processLinks($, nav.href);
+    $ = processLinks($, manifest, nav.href);
     return {
       outline: $("nav[epub\\:type='toc']").html(),
       landmarks: $("nav[epub\\:type='landmarks']").html()
@@ -288,20 +294,22 @@ function toChapter (chapter, manifest, options) {
     stripStyles($);
   } else {
     chapter.styles = $("link[rel~='stylesheet'], style").map(function () {
-      if ($(this).attr("src")) {
-        return url.resolve(chapter.href, $(this).attr("src"));
+      if ($(this).attr("href")) {
+        return url.resolve(chapter.href, $(this).attr("href"));
       }
     }).toArray();
     chapter.styleElements = $("style").map(function () {
       $(this).text();
     }).toArray();
-    var chapterStyles = {
-      contents: chapter.styleElements.join("\n/* */"),
-      href: url.resolve(chapter.href, path.basename(chapter.href, path.extname(chapter.href)) + ".css"),
-      type: "text/css"
-    };
-    manifest.push(chapterStyles);
-    chapter.styles.push(chapterStyles.href);
+    if (chapter.styleElements.length !== 0) {
+      var chapterStyles = {
+        contents: chapter.styleElements.join("\n/* */"),
+        href: url.resolve(chapter.href, path.basename(chapter.href, path.extname(chapter.href)) + ".css"),
+        type: "text/css"
+      };
+      manifest.push(chapterStyles);
+      chapter.styles.push(chapterStyles.href);
+    }
   }
   stripScripts($);
   if (options.stripIframes) {
@@ -334,6 +342,8 @@ function toChapter (chapter, manifest, options) {
   chapter.htmlClasses = $("html").attr("class");
   chapter.bodyId = $("body").attr("id");
   chapter.htmlId = $("html").attr("id");
+  chapter.htmlRole = $("html").attr("role");
+  chapter.bodyRole = $("body").attr("role");
   chapter.title = $("title").text();
   $("body").addClass("paged-chapter-body");
   $("body").get(0).tagName = "paged-chapter-body";
@@ -347,7 +357,9 @@ function findCommonStyleSheets (chapters) {
   }));
 }
 
-function processChapters (chapters, manifest, options) {
+function processChapters (book, options) {
+  var chapters = book.chapters();
+  var manifest = book.manifest;
   options = Object.assign({
     xml: true,
     counter: getZeroPaddedStringCounter(),
@@ -368,9 +380,9 @@ function processChapters (chapters, manifest, options) {
     }
     return toChapter(item, manifest, options);
   });
-  var sheets = findCommonStyleSheets(chapters);
+  book.stylesheets = findCommonStyleSheets(chapters);
   chapters = chapters.map(function (item, index) {
-    item.styles = diff(item.styles, sheets);
+    item.styles = diff(item.styles, book.stylesheets);
     if (!item.htmlId) {
       item.htmlId = "chapter" + index;
     }
@@ -390,7 +402,8 @@ function processChapters (chapters, manifest, options) {
       return file;
     }
   });
-  return chapters;
+  book.manifest = manifest;
+  return book;
 }
 
 module.exports = {

@@ -6,6 +6,8 @@ var fs = require("fs-extra");
 var path = require("path");
 var zipfile = require("zipfile");
 var url = require("url");
+var html = require("./html.js");
+var css = require("./css.js")
 
 function getZip (filename) {
   return new Promise(function (resolve, reject) {
@@ -178,14 +180,18 @@ function extractItemsFromManifest (manifest, type) {
 }
 
 function styles (manifest) {
+  manifest = manifest || this.manifest;
   return extractItemsFromManifest(manifest, "text/css");
 }
 
 function scripts (manifest) {
+  manifest = manifest || this.manifest;
   return extractItemsFromManifest(manifest, "application/javascript");
 }
 
 function chapters (manifest, spine) {
+  manifest = manifest || this.manifest;
+  spine = spine || this.spine;
   return spine.map(function (item) {
     var chapter = manifest.filter(function (file) { return file.id === item.idref; })[0];
     chapter.linear = item.linear;
@@ -205,19 +211,23 @@ function extractFilesFromManifest (manifest, type) {
   return files;
 }
 
-function MP3s (manifest) {
+function mp3s (manifest) {
+  manifest = manifest || this.manifest;
   return extractFilesFromManifest(manifest, "audio/mpeg");
 }
 
-function MP4Audio (manifest) {
+function mp4audio (manifest) {
+  manifest = manifest || this.manifest;
   return extractFilesFromManifest(manifest, "audio/mp4");
 }
 
-function MP4Video (manifest) {
+function mp4video (manifest) {
+  manifest = manifest || this.manifest;
   return extractFilesFromManifest(manifest, "video/mp4");
 }
 
 function images (manifest) {
+  manifest = manifest || this.manifest;
   return extractFilesFromManifest(manifest, ["image/jpeg", "image/png", "image/gif", "image/svg+xml"]);
 }
 
@@ -229,12 +239,44 @@ function findCover (manifest, meta) {
   return coverImage;
 }
 
-function checkForMathML (manifest, meta) {
+function checkForMathML (manifest) {
   var mathml = manifest.filter(function (item) { return item.properties.indexOf("mathml") !== -1; });
-  if (mathml) {
-    meta.mathml = true;
+  if (mathml.length === 0) {
+    return false;
+  } else {
+    return true;
   }
 }
+
+var createBook = Promise.coroutine(function * createBook (filename, target, options) {
+  options = Object.assign({
+    excludeTypes: []
+  }, options);
+  var zip = yield getZip(filename);
+  var opf = yield getOPF(zip);
+  var meta = yield buildMetaFromOPF(opf);
+  var spine = yield buildSpine(opf);
+  var manifest = yield buildManifest(opf);
+  manifest = yield extractFiles(manifest, zip, target, options.excludeTypes);
+  meta.coverHref = findCover(manifest, meta).href;
+  var mathml = checkForMathML(manifest);
+  var outlineAndLandmarks = html.outlineAndLandmarks(manifest, opf);
+  var book = html.processChapters({
+    meta: meta,
+    spine: spine,
+    manifest: manifest,
+    mathml: mathml,
+    chapters: chapters,
+    outline: outlineAndLandmarks.outline,
+    landmarks: outlineAndLandmarks.landmarks
+  });
+  var processedStyles = yield css.prefixCSS(styles(manifest));
+  yield css.writeCSS(processedStyles);
+  book.chapters = chapters(manifest, spine);
+  book.manifest = "";
+  book.spine = "";
+  return book;
+});
 
 module.exports = {
   getZip: getZip,
@@ -244,13 +286,14 @@ module.exports = {
   extractFiles: extractFiles,
   buildSpine: buildSpine,
   images: images,
-  MP4Video: MP4Video,
-  MP4Audio: MP4Audio,
-  MP3s: MP3s,
+  mp4video: mp4video,
+  mp4audio: mp4audio,
+  mp3s: mp3s,
   chapters: chapters,
   scripts: scripts,
   styles: styles,
   findCover: findCover,
-  checkForMathML: checkForMathML
+  checkForMathML: checkForMathML,
+  createBook: createBook
 };
 
