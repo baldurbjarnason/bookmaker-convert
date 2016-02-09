@@ -270,7 +270,17 @@ var createBook = Promise.coroutine(function * createBook (filename, target, opti
     outline: outlineAndLandmarks.outline,
     landmarks: outlineAndLandmarks.landmarks
   });
-  var processedStyles = yield css.prefixCSS(styles(manifest));
+  book.ids = book.chapters().reduce(function (prev, curr) {
+    for (var prop in curr.ids) {
+      if (prev[prop]) {
+        prev[prop].push(curr.ids[prop]);
+      } else {
+        prev[prop] = [curr.ids[prop]];
+      }
+    }
+    return prev;
+  }, {});
+  var processedStyles = yield css.prefixCSS(book.stylesheets, book.ids);
   yield css.writeCSS(processedStyles);
   book.chapters = chapters(manifest, spine);
   book.manifest = "";

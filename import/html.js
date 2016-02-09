@@ -183,14 +183,20 @@ function processLinks ($, manifest, documentHref) {
 }
 
 function processIDs ($, documentHref) {
-  $("[id]").each(function () {
+  return $("[id]").map(function () {
     var el = $(this);
     var id = el.attr("id");
     var bfHref = new Buffer(documentHref);
     var codedHref = "d" + bfHref.toString("hex") + "-" + id;
     el.attr("id", codedHref);
-  });
-  return $;
+    return {
+      id: id,
+      encoded: codedHref
+    };
+  }).toArray().reduce(function (prev, curr) {
+    prev[curr.id] = curr.encoded;
+    return prev;
+  }, {});
 }
 
 function stripElement ($, tagName) {
@@ -279,7 +285,7 @@ function toChapter (chapter, manifest, options) {
     xmlMode: options.xml
   });
   processLinks($, manifest, chapter.href);
-  processIDs($, chapter.href);
+  chapter.ids = processIDs($, chapter.href);
   var bfHref = new Buffer(chapter.href);
   chapter.identifier = "d" + bfHref.toString("hex");
   if (options.counter) {
@@ -380,27 +386,24 @@ function processChapters (book, options) {
     }
     return toChapter(item, manifest, options);
   });
-  book.stylesheets = findCommonStyleSheets(chapters);
+  book.stylesheetUrls = findCommonStyleSheets(chapters);
+  book.stylesheets = book.stylesheetUrls.map(function (sheetHref) {
+    return Object.assign({}, manifest.filter(function (file) { return file.href === sheetHref; })[0], { prefix: "paged-book" });
+  });
   chapters = chapters.map(function (item, index) {
-    item.styles = diff(item.styles, book.stylesheets);
+    var stylesheetUrls = diff(item.styles, book.stylesheetUrls);
     if (!item.htmlId) {
       item.htmlId = "chapter" + index;
     }
-    item.styles = item.styles.map(function (sheetHref) {
-      var style = manifest.filter(function (file) { return file.href === sheetHref; })[0];
+    var styles = stylesheetUrls.map(function (sheetHref) {
+      var style = Object.assign({}, manifest.filter(function (file) { return file.href === sheetHref; })[0]);
       // This lets us properly process the CSS later
-      style.prefix = "#" + item.htmlId;
+      style.prefix = item.htmlId;
+      style.ids = item.ids;
       return sheetHref;
     });
+    book.stylesheets.concat(styles);
     return item;
-  });
-  manifest = manifest.map(function (file) {
-    if (file.type === "text/css" && !file.prefix) {
-      file.prefix = "#paged-book";
-      return file;
-    } else {
-      return file;
-    }
   });
   book.manifest = manifest;
   return book;

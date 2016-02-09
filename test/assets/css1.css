@@ -6,6 +6,10 @@ html {
 	background-color: magenta;
 }
 
+html#test {
+	background-color: magenta;
+}
+
 #thing {
 	margin: 10px;
 }
