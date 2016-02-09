@@ -6,7 +6,7 @@
 * BROWSER: Use rollup, browserify, and uglify to generate four files: es6 module, cjs module, standalone, standalone minified.
 * QUESTION: make the exported HTML completely standalone using data uris and inline js/css?
 * BlobStoreFunction for customisable file saves. Or just a writer object that handles tmp files, paths/urls, blob storage, and more.
-* Allow for custom CSS, JS, and HTML processing functions.
+* Allow for custom CSS, JS, url, and HTML processing functions.
 * Consider using a writer object to abstract file save locations and methods.
 * Chapter wrapping: preamble (up to first h1), pre-matter (from first h1 to first h2), chapters (each h2 to the next one), post-matter (from last h2 to end).
 * Decode obfuscated fonts?

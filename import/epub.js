@@ -261,6 +261,7 @@ var createBook = Promise.coroutine(function * createBook (filename, target, opti
   meta.coverHref = findCover(manifest, meta).href;
   var mathml = checkForMathML(manifest);
   var outlineAndLandmarks = html.outlineAndLandmarks(manifest, opf);
+  manifest = css.fixUrl(manifest);
   var book = html.processChapters({
     meta: meta,
     spine: spine,
