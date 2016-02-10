@@ -1,6 +1,7 @@
 "use strict";
 
-var sanitizer = require("sanitizer");
+var sanitize = require("sanitize-html");
+var sanityOptions = require("./whitelist.js");
 var url = require("url");
 var cheerio = require("cheerio");
 var getZeroPaddedStringCounter = require("./util.js").getZeroPaddedStringCounter;
@@ -111,16 +112,20 @@ function buildMetaFromHTML ($) {
   };
 }
 
+function prefixEpubTypes (types) {
+  return types.split(/\s+/g).map(function (type) {
+    return "doc-" + type;
+  }).join(" ");
+}
+
 function epubtypeToRole ($) {
   $("[epub\\:type]").each(function () {
     // If there is a pre-existing role in the source, assume that the epub:type is there for
     // legacy purposes and that the document author knew what they were doing.
-    if ($(this).attr("role")) {
-      var type = $(this).attr("epub:type");
-      var roles = $(this).attr("role") ? $(this).attr("role") + " " + type : type;
-      $(this).attr("role", roles);
-      $(this).removeAttr("epub:type");
-    }
+    var types = prefixEpubTypes($(this).attr("epub:type"));
+    var roles = $(this).attr("role") ? $(this).attr("role") + " " + types : types;
+    $(this).attr("role", roles);
+    $(this).removeAttr("epub:type");
   });
   return $;
 }
@@ -222,7 +227,7 @@ function stripScripts ($) {
 }
 
 function sanitizeHTML (html) {
-  var cleanHTML = sanitizer.sanitize(html);
+  var cleanHTML = sanitize(html);
   return cleanHTML;
 }
 
@@ -352,8 +357,9 @@ function toChapter (chapter, manifest, options) {
   chapter.bodyRole = $("body").attr("role");
   chapter.title = $("title").text();
   $("body").addClass("paged-chapter-body");
-  $("body").get(0).tagName = "paged-chapter-body";
-  chapter.contents = sanitizeHTML($(".paged-chapter-body").html());
+  console.log($.html());
+  chapter.contents = sanitizeHTML($("body").html());
+  console.log(chapter.contents);
   return chapter;
 }
 
@@ -386,25 +392,27 @@ function processChapters (book, options) {
     }
     return toChapter(item, manifest, options);
   });
-  book.stylesheetUrls = findCommonStyleSheets(chapters);
-  book.stylesheets = book.stylesheetUrls.map(function (sheetHref) {
-    return Object.assign({}, manifest.filter(function (file) { return file.href === sheetHref; })[0], { prefix: "paged-book" });
-  });
-  chapters = chapters.map(function (item, index) {
-    var stylesheetUrls = diff(item.styles, book.stylesheetUrls);
-    if (!item.htmlId) {
-      item.htmlId = "chapter" + index;
-    }
-    var styles = stylesheetUrls.map(function (sheetHref) {
-      var style = Object.assign({}, manifest.filter(function (file) { return file.href === sheetHref; })[0]);
-      // This lets us properly process the CSS later
-      style.prefix = item.htmlId;
-      style.ids = item.ids;
-      return sheetHref;
+  if (options.styles) {
+    book.stylesheetUrls = findCommonStyleSheets(chapters);
+    book.stylesheets = book.stylesheetUrls.map(function (sheetHref) {
+      return Object.assign({}, manifest.filter(function (file) { return file.href === sheetHref; })[0], { prefix: "paged-book" });
     });
-    book.stylesheets.concat(styles);
-    return item;
-  });
+    chapters = chapters.map(function (item, index) {
+      var stylesheetUrls = diff(item.styles, book.stylesheetUrls);
+      if (!item.htmlId) {
+        item.htmlId = "chapter" + index;
+      }
+      var styles = stylesheetUrls.map(function (sheetHref) {
+        var style = Object.assign({}, manifest.filter(function (file) { return file.href === sheetHref; })[0]);
+        // This lets us properly process the CSS later
+        style.prefix = item.htmlId;
+        style.ids = item.ids;
+        return sheetHref;
+      });
+      book.stylesheets.concat(styles);
+      return item;
+    });
+  }
   book.manifest = manifest;
   return book;
 }
