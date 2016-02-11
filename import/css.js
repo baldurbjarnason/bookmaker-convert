@@ -11,8 +11,7 @@ var Promise = require("bluebird");
 
 function mapUrlForItem (item) {
   return function mapUrl (origUrl) {
-    origUrl = url.resolve(item.href, origUrl);
-    return url.resolve(item.target, origUrl);
+    return url.resolve(item.href, origUrl);
   };
 }
 
