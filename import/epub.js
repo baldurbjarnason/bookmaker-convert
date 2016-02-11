@@ -20,14 +20,14 @@ function getOPF (zip) {
   var OPFpath;
   return zip.readFileAsync("META-INF/container.xml").then(function (file) {
     var container = cheerio.load(file.toString(), {
-      normalizeWhitespace: true,
+      normalizeWhitespace: false,
       xmlMode: true
     });
     OPFpath = url.resolve("META-INF/container.xml", container("rootfile").attr("full-path"));
     return zip.readFileAsync(OPFpath);
   }).then(function (OPFFile) {
     var OPF = cheerio.load(OPFFile, {
-      normalizeWhitespace: true,
+      normalizeWhitespace: false,
       xmlMode: true
     });
     OPF("package").attr("data-full-path", OPFpath);
@@ -284,8 +284,10 @@ var createBook = Promise.coroutine(function * createBook (filename, target, opti
   var processedStyles = yield css.prefixCSS(book.stylesheets, book.ids);
   yield css.writeCSS(processedStyles);
   book.chapters = chapters(manifest, spine);
+  book.stylesheets = processedStyles;
   book.manifest = "";
   book.spine = "";
+  book.target = target;
   return book;
 });
 
