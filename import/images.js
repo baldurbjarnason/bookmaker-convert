@@ -10,6 +10,20 @@ function resizeImagesToMatch (images) {
   });
   return Promise.all(images.map(function (img) {
     var sizes = {};
+    var href;
+    if (img.newhref) {
+      href = img.newhref;
+    } else {
+      href = img.href;
+    }
+    var saveOptions;
+    if ((path.extname(href) === ".jpg") || (path.extname(href) === ".jpeg")) {
+      saveOptions = { quality: 70};
+    } else if (path.extname(href) === ".png") {
+      saveOptions = { compression: 6 };
+    } else {
+      saveOptions = {};
+    }
     if (img.width) {
       sizes.width = Math.min(Number.parseInt(img.width, 10) * 2, 2000);
     } else if (img.height) {
@@ -17,9 +31,9 @@ function resizeImagesToMatch (images) {
     }
     if (sizes) {
       return gd.openAsync(path.resolve(img.target, img.href)).then(function (image) {
-        image.resizeAsync(sizes);
+        return image.resizeAsync(sizes);
       }).then(function (image) {
-        image.saveAsync(path.resolve(img.target, img.href));
+        return image.saveAsync(path.resolve(img.target, href), saveOptions);
       }).then(function () {
         return img;
       });
@@ -27,7 +41,7 @@ function resizeImagesToMatch (images) {
       return gd.openAsync(path.resolve(img.target, img.href)).then(function (image) {
         return image.resizeAsync({width: 2000, height: 2000});
       }).then(function (resized) {
-        resized.saveAsync(path.resolve(img.target, img.href));
+        return resized.saveAsync(path.resolve(img.target, href), saveOptions);
       });
     }
   }));
