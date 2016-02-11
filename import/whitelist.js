@@ -2,7 +2,7 @@
 
 // At the moment we don't support SVG
 // Consider adding microdata and RDFa Lite
-// If we end up supporting SVG, run svgo on the element first to normalise.
+// If we end up supporting SVG, run svgo on the element first to normalise. Also remember that SVG uses a different linking scheme
 var htmlwhitelist = ["a",
 "abbr",
 "address",
@@ -47,6 +47,7 @@ var htmlwhitelist = ["a",
 "nav",
 "noscript",
 "ol",
+"li",
 "p",
 "pre",
 "q",

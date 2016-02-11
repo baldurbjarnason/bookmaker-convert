@@ -227,7 +227,7 @@ function stripScripts ($) {
 }
 
 function sanitizeHTML (html) {
-  var cleanHTML = sanitize(html);
+  var cleanHTML = sanitize(html, sanityOptions);
   return cleanHTML;
 }
 
@@ -262,7 +262,7 @@ function outlineAndLandmarks (manifest, OPF) {
   var $;
   if (nav) {
     $ = cheerio.load(nav.contents, {
-      normalizeWhitespace: true,
+      normalizeWhitespace: false,
       xmlMode: nav.type === "application/xhtml+xml"
     });
     $ = processLinks($, manifest, nav.href);
@@ -274,7 +274,7 @@ function outlineAndLandmarks (manifest, OPF) {
     var navId = OPF("spine").attr("toc");
     nav = manifest.filter(function (item) { return item.id === navId; })[0];
     $ = cheerio.load(nav, {
-      normalizeWhitespace: true,
+      normalizeWhitespace: false,
       xmlMode: true
     });
     return {
@@ -286,7 +286,7 @@ function outlineAndLandmarks (manifest, OPF) {
 
 function toChapter (chapter, manifest, options) {
   var $ = cheerio.load(chapter.contents, {
-    normalizeWhitespace: true,
+    normalizeWhitespace: false,
     xmlMode: options.xml
   });
   processLinks($, manifest, chapter.href);
@@ -357,9 +357,7 @@ function toChapter (chapter, manifest, options) {
   chapter.bodyRole = $("body").attr("role");
   chapter.title = $("title").text();
   $("body").addClass("paged-chapter-body");
-  console.log($.html());
   chapter.contents = sanitizeHTML($("body").html());
-  console.log(chapter.contents);
   return chapter;
 }
 
@@ -395,7 +393,7 @@ function processChapters (book, options) {
   if (options.styles) {
     book.stylesheetUrls = findCommonStyleSheets(chapters);
     book.stylesheets = book.stylesheetUrls.map(function (sheetHref) {
-      return Object.assign({}, manifest.filter(function (file) { return file.href === sheetHref; })[0], { prefix: "paged-book" });
+      return Object.assign({}, manifest.filter(function (file) { return file.href === sheetHref; })[0]);
     });
     chapters = chapters.map(function (item, index) {
       var stylesheetUrls = diff(item.styles, book.stylesheetUrls);
