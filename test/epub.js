@@ -2,12 +2,13 @@
 
 var tape = require("tape");
 var epub = require("../import/epub.js");
+var document = require("../import/document.js");
 var path = require("path");
 var Promise = require("bluebird");
 Promise.promisifyAll(require("fs-extra"));
 
 tape.test("Testing epub processing", function (t) {
-  t.plan(23);
+  t.plan(24);
   var epubResult = {};
   epub.getZip(path.resolve(__dirname, "assets/test2.zip")).then(function (zip) {
     epubResult.zip = zip;
@@ -57,5 +58,8 @@ tape.test("Testing epub processing", function (t) {
   }).then(function (book) {
     t.ok(book, "The combined book object should exist");
     t.ok(book.stylesheets, "The combined book object should have stylesheets");
+    return document.createDocument(book, "test2.html");
+  }).then(function (success) {
+    t.ok(success, "Writing HTML should work.");
   });
 });

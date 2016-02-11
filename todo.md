@@ -17,9 +17,13 @@
 * Need to remember in the future (when I get to that) that IDs in HTML sources may not be valide XHTML IDs.
 * Switch HTML processing to be entirely async using promises.
 * Put MathML attribute on chapters.
-* Turn outline and landmarks into JS objects, not HTML.
+* Turn outline and landmarks into JS objects, not HTML. +++
 * Don't forget the prefix for epub:type to role conversions.
 * Non-standard FXL import types?
 * Concat CSS files and fix urls while maintaining original style order, remembering to export sourcemap. Probably best to remove all @imports to begin with.
 * tmp cleanup for tests.
 * Need to be more aggressive at throwing errors.
+* Shift HTML processing into sanitizer.
+* Process SVG.
+* Process Aria and similar for IDs.
+* Turn noscript elements into divs.
