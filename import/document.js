@@ -11,8 +11,8 @@ function mintTag (prefix, tagname, contents) {
   return tag;
 }
 
-function addStyle ($, style) {
-  var styleElement = "<style type='text/css'>\n" + style + "</style>";
+function addStyle ($, style, options) {
+  var styleElement = "<style type='text/css' class='" + options.tagPrefix + "-style'>\n" + style + "</style>";
   $("head").append(styleElement);
 }
 
