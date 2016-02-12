@@ -117,17 +117,6 @@ function replaceIds (selectors, ids) {
 // Needs to use book.ids and chapter.ids to transform old IDs to processed ones, adding selectors as necessary.
 // First process for IDs then prefixes.
 var plugin = postcss.plugin("bookmaker-css-prefix", function prefixPlugin (prefix, body, ids) {
-  if (!prefix) {
-    prefix = {
-      type: "class",
-      name: "bm-chapter"
-    };
-  } else {
-    prefix = {
-      type: "id",
-      name: prefix
-    };
-  }
   return function processRoot (root) {
     root.walkRules(function processRule (rule) {
       rule.selectors = rule.selectors.map(function (rawSelector) {

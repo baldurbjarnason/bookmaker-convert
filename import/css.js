@@ -24,10 +24,25 @@ function fixUrl (manifest) {
   });
 }
 
-function prefixCSS (styles, ids) {
+function prefixCSS (styles, ids, options) {
+  options = Object.assign({
+    tagPrefix: "bm"
+  }, options);
   return Promise.all(styles.map(function (sheet) {
     ids = ids || sheet.ids;
-    var processor = postcss([postcssPrefix(sheet.prefix, "paged-chapter-body", ids), postcssImporter()]);
+    var prefix;
+    if (!sheet.prefix) {
+      prefix = {
+        type: "class",
+        name: options.tagPrefix + "-chapter"
+      };
+    } else {
+      prefix = {
+        type: "id",
+        name: sheet.prefix
+      };
+    }
+    var processor = postcss([postcssPrefix(prefix, options.tagPrefix + "-chapter-body", ids), postcssImporter()]);
     var processedSheet = Object.assign({}, sheet, {
       contents: processor.process(sheet.contents, { from: sheet.href, to: url.resolve(sheet.target, sheet.href), map: true})
     });

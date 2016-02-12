@@ -7,7 +7,7 @@ var path = require("path");
 var zipfile = require("zipfile");
 var url = require("url");
 var html = require("./html.js");
-var css = require("./css.js")
+var css = require("./css.js");
 
 function getZip (filename) {
   return new Promise(function (resolve, reject) {
@@ -250,7 +250,8 @@ function checkForMathML (manifest) {
 
 var createBook = Promise.coroutine(function * createBook (filename, target, options) {
   options = Object.assign({
-    excludeTypes: []
+    excludeTypes: [],
+    tagPrefix: "bm"
   }, options);
   var zip = yield getZip(filename);
   var opf = yield getOPF(zip);
@@ -281,8 +282,7 @@ var createBook = Promise.coroutine(function * createBook (filename, target, opti
     }
     return prev;
   }, {});
-  var processedStyles = yield css.prefixCSS(book.stylesheets, book.ids);
-  yield css.writeCSS(processedStyles);
+  var processedStyles = yield css.prefixCSS(book.stylesheets, book.ids, options);
   book.chapters = chapters(manifest, spine);
   book.stylesheets = processedStyles;
   book.manifest = "";

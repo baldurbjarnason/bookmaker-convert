@@ -356,7 +356,6 @@ function toChapter (chapter, manifest, options) {
   chapter.htmlRole = $("html").attr("role");
   chapter.bodyRole = $("body").attr("role");
   chapter.title = $("title").text();
-  $("body").addClass("paged-chapter-body");
   chapter.contents = sanitizeHTML($("body").html());
   return chapter;
 }
@@ -380,7 +379,8 @@ function processChapters (book, options) {
     mappings: [],
     wraps: [],
     stripIframes: true,
-    resizeImages: true
+    resizeImages: true,
+    tagPrefix: "bm"
   }, options);
   chapters = chapters.map(function (item) {
     if (item.type === "text/html") {
