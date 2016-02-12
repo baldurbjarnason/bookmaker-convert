@@ -24,6 +24,7 @@
 * tmp cleanup for tests.
 * Need to be more aggressive at throwing errors.
 * Shift HTML processing into sanitizer.
-* Process SVG.
+* Process SVG. But try not to process it like XHTML.
 * Process Aria and similar for IDs.
 * Turn noscript elements into divs.
+* CSS minification.

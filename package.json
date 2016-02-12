@@ -1,7 +1,7 @@
 {
-  "name": "bookmaker2",
-  "version": "0.0.1",
-  "description": "A set of tools for making usable and readable ebooks",
+  "name": "bookmaker-convert",
+  "version": "0.1.0",
+  "description": "A set of tools for converting epub and html",
   "main": "index.js",
   "scripts": {
     "test": "node test/test.js"
