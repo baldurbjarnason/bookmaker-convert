@@ -4,7 +4,7 @@
   "description": "A set of tools for converting epub and html",
   "main": "index.js",
   "scripts": {
-    "test": "node test/test.js"
+    "test": "node test/index.js"
   },
   "keywords": [
     "epub",
@@ -24,7 +24,6 @@
     "glob": "^6.0.4",
     "postcss": "^5.0.14",
     "postcss-map-url": "^1.0.2",
-    "postcss-selector-prefix": "^2.0.0",
     "sanitize-html": "^1.11.3",
     "zipfile": "^0.5.9"
   },

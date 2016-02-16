@@ -3,7 +3,7 @@
 * BROWSER: browser-based epub export using bookmaker custom elements.
 * BROWSER: Customised xml-serialiser. Fork it to create a version that has custom serialisation behaviour for custom elements. Probably using an xmlTagName property.
 * DOCX import.
-* BROWSER: Use rollup, browserify, and uglify to generate four files: es6 module, cjs module, standalone, standalone minified.
+* BROWSER: Use rollup, browserify, and uglify to generate three files: es6 module, umd, and umd minified.
 * QUESTION: make the exported HTML completely standalone using data uris and inline js/css?
 * BlobStoreFunction for customisable file saves. Or just a writer object that handles tmp files, paths/urls, blob storage, and more.
 * Allow for custom CSS, JS, url, and HTML processing functions.
@@ -28,3 +28,8 @@
 * Process Aria and similar for IDs.
 * Turn noscript elements into divs.
 * CSS minification.
+* Pre-computed inverted style sheet?
+* CSS rewriter that turns px font sizes into rem or em.
+* Better support for parsing epub files exported from bookmaker.
+* Map the class and id selectors for body and html properly in the CSS.
+* Add position: relative to all chapter tags, somehow.

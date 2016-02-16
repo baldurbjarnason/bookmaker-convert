@@ -29,8 +29,9 @@ function addChapter ($, chapter, options) {
   chapterBodyElement.attr("role", chapter.bodyRole);
   chapterElement.append(chapterBodyElement);
   chapterElement.append("\n");
-  $(options.tagPrefix + "book" + " > " + options.tagPrefix + "book-body").append(chapterElement);
-  $(options.tagPrefix + "book" + " > " + options.tagPrefix + "book-body").append("\n");
+  console.log(chapterElement.html());
+  $(options.tagPrefix + "-book" + " > " + options.tagPrefix + "-book-body").append(chapterElement);
+  $(options.tagPrefix + "-book" + " > " + options.tagPrefix + "-book-body").append("\n");
 }
 
 function addCover ($, meta, options) {
