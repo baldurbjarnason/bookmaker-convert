@@ -22,6 +22,7 @@ function addChapter ($, chapter, options) {
   chapterElement.attr("id", chapter.htmlId);
   chapterElement.attr("class", chapter.htmlClasses);
   chapterElement.attr("role", chapter.htmlRole);
+  chapterElement.attr("properties", chapter.properties.join(" "));
   chapterBodyElement.attr("id", chapter.bodyId);
   chapterBodyElement.attr("class", chapter.bodyClasses);
   chapterElement.addClass(options.tagPrefix + "-chapter");
@@ -29,7 +30,6 @@ function addChapter ($, chapter, options) {
   chapterBodyElement.attr("role", chapter.bodyRole);
   chapterElement.append(chapterBodyElement);
   chapterElement.append("\n");
-  console.log(chapterElement.html());
   $(options.tagPrefix + "-book" + " > " + options.tagPrefix + "-book-body").append(chapterElement);
   $(options.tagPrefix + "-book" + " > " + options.tagPrefix + "-book-body").append("\n");
 }
@@ -44,15 +44,22 @@ function addCover ($, meta, options) {
 
 function createDocument (book, filename, options) {
   options = Object.assign({
-    tagPrefix: "bm"
+    tagPrefix: "bm",
+    addCover: true
   }, options);
   var $ = cheerio.load(htmlTemplate);
-  for (var style of book.stylesheets) {
-    addStyle($, style.contents, options);
+  if (book.stylesheets) {
+    for (var style of book.stylesheets) {
+      addStyle($, style.contents, options);
+    }
   }
   $("head").append("<script async src='bookmaker.js'></script>");
-  $("title").text(book.meta.titles[0].value);
-  addCover($, book.meta, options);
+  if (book.meta.titles && book.meta.titles.length !== 0) {
+    $("title").text(book.meta.titles[0].value);
+  }
+  if (options.addCover) {
+    addCover($, book.meta, options);
+  }
   for (var chapter of book.chapters) {
     addChapter($, chapter, options);
   }
