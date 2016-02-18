@@ -104,7 +104,7 @@ function buildMetaFromHTML ($) {
       type: "creator",
       value: $(this).attr("content")
     };
-  });
+  }).toArray();
   return {
     titles: titles,
     creators: creators,
@@ -122,7 +122,7 @@ function epubtypeToRole ($) {
   $("[epub\\:type]").each(function () {
     // If there is a pre-existing role in the source, assume that the epub:type is there for
     // legacy purposes and that the document author knew what they were doing.
-    var types = prefixEpubTypes($(this).attr("epub:type"));
+    var types = prefixEpubTypes($(this).attr("epub:type")).split(/\s+/g).map(function (type) { return "doc-" + type; }).join(" ");
     var roles = $(this).attr("role") ? $(this).attr("role") + " " + types : types;
     $(this).attr("role", roles);
     $(this).removeAttr("epub:type");
