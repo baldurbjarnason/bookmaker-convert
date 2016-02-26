@@ -31,6 +31,7 @@ function resizeImagesToMatch (images) {
     }
     if (sizes) {
       return gd.openAsync(path.resolve(img.target, img.href)).then(function (image) {
+        image.saveAlpha(100);
         return image.resizeAsync(sizes);
       }).then(function (image) {
         return image.saveAsync(path.resolve(img.target, href), saveOptions);

@@ -23,3 +23,5 @@
 * Better support for parsing epub files exported from bookmaker.
 * Filter style attributes to only allow through page-break-* rules.
 * Add meta option to the createBook functions.
+* More thorough link handling: img[xlink:href] in SVG should be treated like img[src], a[xlink:href] like a[href], whitelist protocols in CSS (both in HTML and SVG).
+* Image processing is actually broken for png->jpg conversion at the moment if the original has an alpha channel.

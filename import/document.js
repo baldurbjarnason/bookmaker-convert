@@ -22,7 +22,9 @@ function addChapter ($, chapter, options) {
   chapterElement.attr("id", chapter.htmlId);
   chapterElement.attr("class", chapter.htmlClasses);
   chapterElement.attr("role", chapter.htmlRole);
-  chapterElement.attr("properties", chapter.properties.join(" "));
+  if (chapter.properties && chapter.properties.length !== 0) {
+    chapterElement.attr("properties", chapter.properties.join(" "));
+  }
   chapterBodyElement.attr("id", chapter.bodyId);
   chapterBodyElement.attr("class", chapter.bodyClasses);
   chapterElement.addClass(options.tagPrefix + "-chapter");
